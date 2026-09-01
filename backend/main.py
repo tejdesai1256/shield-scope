@@ -23,7 +23,6 @@ from scanners.exposed_paths_scanner import scan_exposed_paths
 from services.ai_service import get_ai_response
 from services.url_validator import validate_public_url
 
-from services.db_service import get_user_by_email, create_user, decrement_user_scans
 from services.auth_service import (
     hash_password, verify_password, create_access_token,
     get_current_user_from_token, sanitize_user, validate_password_strength

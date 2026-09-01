@@ -5,7 +5,6 @@ import secrets
 from datetime import datetime, timedelta, timezone
 import jwt
 from dotenv import load_dotenv
-from services.db_service import get_user_by_email
 
 # Load environment variables if not already loaded
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -305,7 +305,7 @@ async function scanWebsite() {
 
         setScanState(ScanState.SCANNING);
 
-        const apiHost = typeof auth !== 'undefined' ? auth.backendBase : (typeof window.getBackendBaseUrl === 'function' ? window.getBackendBaseUrl() : 'http://127.0.0.1:8000');
+        const apiHost = typeof auth !== 'undefined' ? auth.backendBase : (typeof window.getBackendBaseUrl === 'function' ? window.getBackendBaseUrl() : 'https://shieldscope-backend-e3hu.onrender.com');
         const apiUrl = `${apiHost}/scan`;
 
         const token = typeof auth !== 'undefined' ? auth.getToken() : null;
@@ -1866,7 +1866,7 @@ async function sendChatMessage(isSuggestion = false) {
     try {
         const scanData = getActiveScanData();
         const savedKey = localStorage.getItem('gemini_api_key') || '';
-        const host = typeof auth !== 'undefined' ? auth.backendBase : (typeof window.getBackendBaseUrl === 'function' ? window.getBackendBaseUrl() : 'http://127.0.0.1:8000');
+        const host = typeof auth !== 'undefined' ? auth.backendBase : (typeof window.getBackendBaseUrl === 'function' ? window.getBackendBaseUrl() : 'https://shieldscope-backend-e3hu.onrender.com');
             
         const token = typeof auth !== 'undefined' ? auth.getToken() : (localStorage.getItem('access_token') || localStorage.getItem('token'));
         const headers = {

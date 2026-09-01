@@ -520,7 +520,7 @@
             scanBtn.disabled = true;
 
             try {
-                const apiHost = typeof auth !== 'undefined' ? auth.backendBase : (typeof window.getBackendBaseUrl === 'function' ? window.getBackendBaseUrl() : 'http://127.0.0.1:8000');
+                const apiHost = typeof auth !== 'undefined' ? auth.backendBase : (typeof window.getBackendBaseUrl === 'function' ? window.getBackendBaseUrl() : 'https://shieldscope-backend-e3hu.onrender.com');
                 const apiUrl = `${apiHost}/scan`;
 
                 const response = await auth.fetchWithAuth(apiUrl, {
@@ -596,7 +596,7 @@
             const user = auth.getCurrentUser();
             if (user && user.email) {
                 try {
-                    const apiHost = typeof auth !== 'undefined' ? auth.backendBase : (typeof window.getBackendBaseUrl === 'function' ? window.getBackendBaseUrl() : 'http://127.0.0.1:8000');
+                    const apiHost = typeof auth !== 'undefined' ? auth.backendBase : (typeof window.getBackendBaseUrl === 'function' ? window.getBackendBaseUrl() : 'https://shieldscope-backend-e3hu.onrender.com');
                     const res = await auth.fetchWithAuth(`${apiHost}/api/scans/history`);
                     if (res && res.ok) {
                         const data = await res.json();

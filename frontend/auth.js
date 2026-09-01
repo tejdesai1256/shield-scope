@@ -1,33 +1,28 @@
+// Production Backend API URL deployed on Render
+window.API_BASE_URL = 'https://shieldscope-backend-e3hu.onrender.com';
+
 // Helper to determine the backend API base URL dynamically based on environment
 window.getBackendBaseUrl = function() {
-    if (window.API_BASE_URL) {
-        return window.API_BASE_URL.replace(/\/$/, '');
-    }
-
     const origin = window.location.origin || '';
     const hostname = window.location.hostname || '';
     const protocol = window.location.protocol || '';
 
-    // Local development environment check
+    // Local development environment check (only when explicitly serving from localhost/127.0.0.1 with port 8000)
     if (
-        hostname === 'localhost' ||
-        hostname === '127.0.0.1' ||
-        protocol === 'file:' ||
-        origin.includes('8000') ||
-        origin.includes('127.0.0.1') ||
-        origin.includes('localhost')
+        (hostname === 'localhost' || hostname === '127.0.0.1') &&
+        (origin.includes('8000') || window.location.port === '8000')
     ) {
         return 'http://127.0.0.1:8000';
     }
 
     // Deployed on Render where backend & frontend are hosted on the exact same origin
-    if (origin.includes('onrender.com') && origin.includes('website-security-scanner')) {
+    if (origin.includes('onrender.com') && origin.includes('shieldscope')) {
         return origin.replace(/\/$/, '');
     }
 
     // Deployed on Netlify, Vercel, GitHub Pages, or external frontend domain
     // Connects to live backend API hosted on Render
-    return 'https://website-security-scanner-2-1.onrender.com';
+    return window.API_BASE_URL;
 };
 
 // Real Authentication System for ShieldScope
