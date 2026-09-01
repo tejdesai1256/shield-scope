@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - ShieldScope Website Security Scanner</title>
+    <meta name="description" content="Create a free ShieldScope account to scan websites, analyze security vulnerabilities, and track reports.">
+
+    <!-- Google Fonts & Font Awesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="styles.css">
+    
+    <style>
+        body {
+            background-color: var(--bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .auth-container {
+            min-height: calc(100vh - 80px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2.5rem 1rem;
+        }
+
+        .auth-card {
+            background: var(--surface-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg, 16px);
+            width: 100%;
+            max-width: 480px;
+            padding: 2.5rem;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .auth-header .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-decoration: none;
+            margin-bottom: 1.25rem;
+        }
+
+        .auth-header .logo i {
+            color: var(--primary);
+            font-size: 1.75rem;
+        }
+
+        .auth-header h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        .auth-header p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+
+        .input-wrapper i.prefix-icon {
+            position: absolute;
+            left: 1.1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 1rem;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .input-wrapper .form-control {
+            width: 100%;
+            padding-top: 0.85rem !important;
+            padding-bottom: 0.85rem !important;
+            padding-left: 3rem !important;
+            padding-right: 3rem !important;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: var(--radius-md, 10px);
+            color: var(--input-color);
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+
+        .input-wrapper .form-control::placeholder {
+            color: var(--text-muted);
+            opacity: 0.65;
+        }
+
+        .input-wrapper .form-control:focus {
+            outline: none;
+            border-color: var(--input-focus);
+            box-shadow: 0 0 0 3px var(--input-focus-shadow);
+        }
+
+        .input-wrapper .toggle-password {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0.35rem;
+            font-size: 1rem;
+            z-index: 5;
+            transition: color 0.2s ease;
+        }
+
+        .input-wrapper .toggle-password:hover {
+            color: var(--text-primary);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 0.85rem;
+            background: var(--primary);
+            color: #ffffff;
+            border: none;
+            border-radius: var(--radius-md, 10px);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 1.75rem;
+        }
+
+        .btn-submit:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .auth-footer {
+            margin-top: 1.75rem;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .auth-footer a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .error-banner {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid var(--danger);
+            color: #fca5a5;
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-sm, 6px);
+            font-size: 0.875rem;
+            margin-bottom: 1.25rem;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navbar -->
+    <header class="navbar">
+        <div class="container">
+            <a href="index.html" class="nav-brand">
+                <i class="fas fa-shield-halved"></i>
+                <span>ShieldScope</span>
+            </a>
+            <nav class="nav-menu">
+                <a href="index.html">Home</a>
+                <a href="features.html">Features</a>
+                <a href="about.html">About Us</a>
+            </nav>
+            <div class="nav-actions">
+                <button id="themeToggle" class="theme-toggle" type="button" data-theme-toggle aria-label="Switch theme">
+                    <i class="fas fa-moon" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Auth Content -->
+    <main class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <a href="index.html" class="logo">
+                    <i class="fas fa-shield-halved"></i> ShieldScope
+                </a>
+                <h1>Create Account</h1>
+                <p>Start scanning your websites for security vulnerabilities</p>
+            </div>
+
+            <div id="errorBanner" class="error-banner"></div>
+
+            <form id="signupForm">
+                <div class="form-group">
+                    <label for="fullName">Full Name</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-user prefix-icon"></i>
+                        <input type="text" id="fullName" class="form-control" placeholder="John Doe" required autocomplete="name">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="signupEmail">Email Address</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-envelope prefix-icon"></i>
+                        <input type="email" id="signupEmail" class="form-control" placeholder="name@example.com" required autocomplete="email">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="signupPassword">Password</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock prefix-icon"></i>
+                        <input type="password" id="signupPassword" class="form-control" placeholder="At least 6 characters" required autocomplete="new-password">
+                        <button type="button" class="toggle-password" id="togglePasswordBtn">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock prefix-icon"></i>
+                        <input type="password" id="confirmPassword" class="form-control" placeholder="Re-enter password" required autocomplete="new-password">
+                    </div>
+                </div>
+
+                <button type="submit" id="submitBtn" class="btn-submit">
+                    <span>Create Account</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                Already have an account? <a href="login.html">Log In</a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="theme.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (auth.isLoggedInLocally()) {
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            const signupForm = document.getElementById('signupForm');
+            const fullName = document.getElementById('fullName');
+            const signupEmail = document.getElementById('signupEmail');
+            const signupPassword = document.getElementById('signupPassword');
+            const confirmPassword = document.getElementById('confirmPassword');
+            const submitBtn = document.getElementById('submitBtn');
+            const errorBanner = document.getElementById('errorBanner');
+            const togglePasswordBtn = document.getElementById('togglePasswordBtn');
+
+            togglePasswordBtn.addEventListener('click', () => {
+                const isPwd = signupPassword.type === 'password';
+                signupPassword.type = isPwd ? 'text' : 'password';
+                togglePasswordBtn.innerHTML = isPwd ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+            });
+
+            signupForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                errorBanner.style.display = 'none';
+                submitBtn.disabled = true;
+                submitBtn.querySelector('span').textContent = 'Creating Account...';
+
+                const res = await auth.register(
+                    signupEmail.value,
+                    signupPassword.value,
+                    confirmPassword.value,
+                    fullName.value
+                );
+
+                if (res.success) {
+                    auth.clearSession();
+                    errorBanner.style.background = 'rgba(34, 197, 94, 0.15)';
+                    errorBanner.style.borderColor = '#22c55e';
+                    errorBanner.style.color = '#86efac';
+                    errorBanner.textContent = 'Account created successfully! Redirecting to login page...';
+                    errorBanner.style.display = 'block';
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 1500);
+                } else {
+                    submitBtn.disabled = false;
+                    submitBtn.querySelector('span').textContent = 'Create Account';
+                    errorBanner.style.background = 'rgba(239, 68, 68, 0.15)';
+                    errorBanner.style.borderColor = 'var(--danger)';
+                    errorBanner.style.color = '#fca5a5';
+                    errorBanner.textContent = res.errors ? res.errors.join(' ') : 'Registration failed.';
+                    errorBanner.style.display = 'block';
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

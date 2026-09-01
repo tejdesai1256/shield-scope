@@ -1,0 +1,10 @@
+# Environments & secrets
+.env
+*.env
+backend/.env
+backend/database/*.db
+__pycache__/
+*.pyc
+venv/
+.vscode/
+.idea/

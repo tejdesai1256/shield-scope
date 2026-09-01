@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Us - ShieldScope Security Scanner</title>
+
+    <meta name="description"
+        content="Learn about ShieldScope: Premier cybersecurity platform dedicated to non-invasive website vulnerability scanning and digital asset protection.">
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+
+    <!-- =========================
+         NAVIGATION HEADER
+    ========================== -->
+    <header class="navbar">
+        <div class="container">
+
+            <div class="nav-brand">
+                <i class="fas fa-shield-halved"></i>
+                <a href="index.html" style="color: inherit; text-decoration: none;"><span>ShieldScope</span></a>
+            </div>
+
+            <nav class="nav-menu">
+                <a href="index.html">Home</a>
+                <a href="features.html">Features</a>
+                <a href="about.html" class="active">About Us</a>
+            </nav>
+
+            <div class="nav-actions" id="navActionsAuth" style="display: flex; align-items: center; gap: 12px;">
+                <span id="navLoggedOutActions" style="display: flex; align-items: center; gap: 12px;">
+                    <a href="login.html" style="color: var(--text-primary); text-decoration: none; font-weight: 500; font-size: 0.95rem;">Log In</a>
+                    <a href="signup.html" class="dashboard-btn">Sign Up</a>
+                </span>
+                <span id="navLoggedInActions" style="display: none; align-items: center; gap: 12px;">
+                    <a href="dashboard.html" class="dashboard-btn">Dashboard</a>
+                    <button onclick="handleLogout()" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-secondary); padding: 0.5rem 0.9rem; border-radius: var(--radius-md, 10px); cursor: pointer; font-size: 0.88rem; font-weight: 500;">Log Out</button>
+                </span>
+                <button id="themeToggle" class="theme-toggle" type="button" data-theme-toggle aria-label="Switch theme">
+                    <i class="fas fa-moon" aria-hidden="true"></i>
+                </button>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- Page Header Banner -->
+   
+
+    <!-- =========================
+         ABOUT SECTION
+    ========================== -->
+    <section class="about-section" id="about">
+        <div class="container">
+            <h2>Our Story & Mission</h2>
+            <p class="section-subtitle">Democratizing cybersecurity for businesses and developers worldwide</p>
+
+            <div class="about-content">
+                <div class="about-box">
+                    <h3>Who We Are</h3>
+                    <p>ShieldScope is a premier cybersecurity platform dedicated to making the web a safer place. Founded
+                        by security experts and ethical hackers, we've built a comprehensive website security scanner
+                        that helps businesses and individuals identify vulnerabilities before attackers do.</p>
+                    <p>Our mission is to democratize cybersecurity by providing enterprise-grade security scanning tools
+                        that are accessible, affordable, and easy to use. Whether you're a small business owner, a
+                        developer, or a large enterprise, we believe everyone deserves to know their security posture.
+                    </p>
+                    <p>With over 100,000+ websites scanned and counting, ShieldScope has helped organizations worldwide
+                        strengthen their security defenses, achieve compliance, and protect their digital assets from
+                        emerging threats.</p>
+                </div>
+            </div>
+
+            <div class="values-grid">
+                <div class="value-card security">
+                    <i class="fas fa-shield-alt"></i>
+                    <h3>Security First</h3>
+                    <p>We prioritize your security with non-invasive scans and encrypted data handling</p>
+                </div>
+
+                <div class="value-card accuracy">
+                    <i class="fas fa-balance-scale"></i>
+                    <h3>Accuracy</h3>
+                    <p>Powered by advanced algorithms that deliver precise vulnerability detection</p>
+                </div>
+
+                <div class="value-card community">
+                    <i class="fas fa-users"></i>
+                    <h3>Community</h3>
+                    <p>Built by security experts who believe in sharing knowledge and protecting users</p>
+                </div>
+
+                <div class="value-card excellence">
+                    <i class="fas fa-bookmark"></i>
+                    <h3>Excellence</h3>
+                    <p>Committed to continuous improvement and staying ahead of cyber threats</p>
+                </div>
+            </div>
+
+            <!-- BOTTOM STATS -->
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <h3>100K+</h3>
+                    <p>Websites Scanned</p>
+                </div>
+                <div class="stat-item">
+                    <h3>50K+</h3>
+                    <p>Vulnerabilities Found</p>
+                </div>
+                <div class="stat-item">
+                    <h3>99.9%</h3>
+                    <p>Accuracy Rate</p>
+                </div>
+                <div class="stat-item">
+                    <h3>24/7</h3>
+                    <p>Monitoring Available</p>
+                </div>
+                <div class="stat-item">
+                    <h3>4.8/5</h3>
+                    <p>User Satisfaction</p>
+                </div>
+                <div class="stat-item">
+                    <h3>100%</h3>
+                    <p>Data Privacy</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================
+         TESTIMONIALS SECTION (INFINITE LOOP)
+    ========================== -->
+    <section class="testimonials">
+        <div class="container">
+            <h2>What Our Users Say</h2>
+            <p class="section-subtitle">Trusted by thousands of businesses and cybersecurity teams worldwide</p>
+        </div>
+
+        <div class="testimonials-slider-container">
+            <div class="testimonial-track">
+
+                <!-- 1 -->
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                    <p class="testimonial-text">"ShieldScope helped us identify critical security vulnerabilities before they became a problem. Highly recommended!"</p>
+                    <div class="testimonial-author"><strong>Sarah Johnson</strong><span>CEO, TechStart Inc.</span></div>
+                </div>
+
+                <!-- 2 -->
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-stroke"></i></div>
+                    <p class="testimonial-text">"The speed and depth of the port and SSL scanning are incredible. Found configuration errors in minutes!"</p>
+                    <div class="testimonial-author"><strong>Aarav Mehta</strong><span>Lead Security Architect, CloudBharat Systems</span></div>
+                </div>
+
+                <!-- 3 -->
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                    <p class="testimonial-text">"The detailed reports and actionable recommendations have transformed how we approach website security."</p>
+                    <div class="testimonial-author"><strong>Marcus Chen</strong><span>DevOps Lead, WebSecure</span></div>
+                </div>
+
+                <!-- 4 -->
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="far fa-star"></i></div>
+                    <p class="testimonial-text">"As a cybersecurity instructor, I recommend ShieldScope to all my teams. Clean UI and accurate CVE alerts."</p>
+                    <div class="testimonial-author"><strong>Priya Sharma</strong><span>Founder, CyberSuraksha Labs</span></div>
+                </div>
+
+                <!-- 5 -->
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                    <p class="testimonial-text">"Simple to use yet powerful. ShieldScope is now a critical part of our daily security infrastructure."</p>
+                    <div class="testimonial-author"><strong>Emily Rodriguez</strong><span>Security Engineer, DataShield</span></div>
+                </div>
+
+                <!-- 6 -->
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="far fa-star"></i></div>
+                    <p class="testimonial-text">"Checking HTTP security headers and CORS configurations used to take hours. ShieldScope automates it effortlessly."</p>
+                    <div class="testimonial-author"><strong>Rohan Verma</strong><span>CTO, FinTech Velocity</span></div>
+                </div>
+
+                <!-- 7 -->
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-stroke"></i></div>
+                    <p class="testimonial-text">"The technology detection and exposed paths scanner saved us from a potential data leak. Exceptional tool!"</p>
+                    <div class="testimonial-author"><strong>David Miller</strong><span>Principal Engineer, Apex Networks</span></div>
+                </div>
+
+                <!-- 8 -->
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                    <p class="testimonial-text">"Loved the instant security score visual gauge. It gives non-technical stakeholders clear visibility into risk."</p>
+                    <div class="testimonial-author"><strong>Ananya Patel</strong><span>Product Lead, DesiTech Innovations</span></div>
+                </div>
+
+                <!-- 9 -->
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="far fa-star"></i></div>
+                    <p class="testimonial-text">"The SEO audit combined with full security analysis makes this a complete all-in-one web utility."</p>
+                    <div class="testimonial-author"><strong>Vikram Sengupta</strong><span>Head of InfoSec, Kolkata Pay</span></div>
+                </div>
+
+                <!-- 10 -->
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                    <p class="testimonial-text">"Very impressed with how clean the PDF reports look. Perfect for presenting to board members and clients."</p>
+                    <div class="testimonial-author"><strong>Elena Rostova</strong><span>Cyber Risk Analyst, Nordic Shield</span></div>
+                </div>
+
+                <!-- 11 -->
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-stroke"></i></div>
+                    <p class="testimonial-text">"Super smooth dashboard and fast scan speeds. I run a ShieldScope scan after every major website deployment."</p>
+                    <div class="testimonial-author"><strong>Kavita Reddy</strong><span>Full Stack Developer, Hyderabad Devs</span></div>
+                </div>
+
+                <!-- 12 -->
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                    <p class="testimonial-text">"ShieldScope provides enterprise-grade scanning precision with zero configuration friction. Truly top tier."</p>
+                    <div class="testimonial-author"><strong>Alexandre Dubois</strong><span>CISO, EuroVault Security</span></div>
+                </div>
+
+                <!-- 13 -->
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="far fa-star"></i></div>
+                    <p class="testimonial-text">"The CORS and exposed path detector found open config files we didn't even know existed. Saved our team big time."</p>
+                    <div class="testimonial-author"><strong>Rajesh Nair</strong><span>Infrastructure Manager, Kerala DigiCorp</span></div>
+                </div>
+
+                <!-- DUPLICATE SET FOR INFINITE SEAMLESS SCROLL -->
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                    <p class="testimonial-text">"ShieldScope helped us identify critical security vulnerabilities before they became a problem. Highly recommended!"</p>
+                    <div class="testimonial-author"><strong>Sarah Johnson</strong><span>CEO, TechStart Inc.</span></div>
+                </div>
+
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-stroke"></i></div>
+                    <p class="testimonial-text">"The speed and depth of the port and SSL scanning are incredible. Found configuration errors in minutes!"</p>
+                    <div class="testimonial-author"><strong>Aarav Mehta</strong><span>Lead Security Architect, CloudBharat Systems</span></div>
+                </div>
+
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                    <p class="testimonial-text">"The detailed reports and actionable recommendations have transformed how we approach website security."</p>
+                    <div class="testimonial-author"><strong>Marcus Chen</strong><span>DevOps Lead, WebSecure</span></div>
+                </div>
+
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="far fa-star"></i></div>
+                    <p class="testimonial-text">"As a cybersecurity instructor, I recommend ShieldScope to all my teams. Clean UI and accurate CVE alerts."</p>
+                    <div class="testimonial-author"><strong>Priya Sharma</strong><span>Founder, CyberSuraksha Labs</span></div>
+                </div>
+
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                    <p class="testimonial-text">"Simple to use yet powerful. ShieldScope is now a critical part of our daily security infrastructure."</p>
+                    <div class="testimonial-author"><strong>Emily Rodriguez</strong><span>Security Engineer, DataShield</span></div>
+                </div>
+
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="far fa-star"></i></div>
+                    <p class="testimonial-text">"Checking HTTP security headers and CORS configurations used to take hours. ShieldScope automates it effortlessly."</p>
+                    <div class="testimonial-author"><strong>Rohan Verma</strong><span>CTO, FinTech Velocity</span></div>
+                </div>
+
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-stroke"></i></div>
+                    <p class="testimonial-text">"The technology detection and exposed paths scanner saved us from a potential data leak. Exceptional tool!"</p>
+                    <div class="testimonial-author"><strong>David Miller</strong><span>Principal Engineer, Apex Networks</span></div>
+                </div>
+
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                    <p class="testimonial-text">"Loved the instant security score visual gauge. It gives non-technical stakeholders clear visibility into risk."</p>
+                    <div class="testimonial-author"><strong>Ananya Patel</strong><span>Product Lead, DesiTech Innovations</span></div>
+                </div>
+
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="far fa-star"></i></div>
+                    <p class="testimonial-text">"The SEO audit combined with full security analysis makes this a complete all-in-one web utility."</p>
+                    <div class="testimonial-author"><strong>Vikram Sengupta</strong><span>Head of InfoSec, Kolkata Pay</span></div>
+                </div>
+
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                    <p class="testimonial-text">"Very impressed with how clean the PDF reports look. Perfect for presenting to board members and clients."</p>
+                    <div class="testimonial-author"><strong>Elena Rostova</strong><span>Cyber Risk Analyst, Nordic Shield</span></div>
+                </div>
+
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-stroke"></i></div>
+                    <p class="testimonial-text">"Super smooth dashboard and fast scan speeds. I run a ShieldScope scan after every major website deployment."</p>
+                    <div class="testimonial-author"><strong>Kavita Reddy</strong><span>Full Stack Developer, Hyderabad Devs</span></div>
+                </div>
+
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div>
+                    <p class="testimonial-text">"ShieldScope provides enterprise-grade scanning precision with zero configuration friction. Truly top tier."</p>
+                    <div class="testimonial-author"><strong>Alexandre Dubois</strong><span>CISO, EuroVault Security</span></div>
+                </div>
+
+                <div class="testimonial-card-loop">
+                    <div class="stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="far fa-star"></i></div>
+                    <p class="testimonial-text">"The CORS and exposed path detector found open config files we didn't even know existed. Saved our team big time."</p>
+                    <div class="testimonial-author"><strong>Rajesh Nair</strong><span>Infrastructure Manager, Kerala DigiCorp</span></div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================
+         FOOTER
+    ========================== -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>ShieldScope</h4>
+                    <p>Making the web safer, one scan at a time.</p>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="features.html">Features</a></li>
+                        <li><a href="about.html">About</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Terms of Service</a></li>
+                        <li><a href="#">Security</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Follow Us</h4>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="https://github.com/tejdesai1256"><i class="fab fa-github"></i></a>
+                        <a href="https://www.linkedin.com/in/tej-desai-020b4625a/"><i class="fab fa-linkedin"></i></a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2026 ShieldScope. All rights reserved. Designed for enhanced web safety.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="theme.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        (async function toggleNavAuthState() {
+            const loggedOutEl = document.getElementById('navLoggedOutActions');
+            const loggedInEl = document.getElementById('navLoggedInActions');
+            const user = auth.isLoggedInLocally() ? await auth.fetchCurrentUser() : null;
+            if (user) {
+                if (loggedInEl) loggedInEl.style.display = 'flex';
+                if (loggedOutEl) loggedOutEl.style.display = 'none';
+            } else {
+                if (loggedInEl) loggedInEl.style.display = 'none';
+                if (loggedOutEl) loggedOutEl.style.display = 'flex';
+            }
+        })();
+
+        async function handleLogout() {
+            if (confirm('Are you sure you want to logout?')) {
+                await auth.logout();
+                window.location.reload();
+            }
+        }
+    </script>
+</body>
+
+</html>

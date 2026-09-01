@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Features - ShieldScope Security Scanner</title>
+
+    <meta name="description"
+        content="Discover ShieldScope features: SSL/TLS analysis, Port scanning, SEO optimization, security headers check, and real-time vulnerability detection.">
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+
+    <!-- =========================
+         NAVIGATION HEADER
+    ========================== -->
+    <header class="navbar">
+        <div class="container">
+
+            <div class="nav-brand">
+                <i class="fas fa-shield-halved"></i>
+                <a href="index.html" style="color: inherit; text-decoration: none;"><span>ShieldScope</span></a>
+            </div>
+
+            <nav class="nav-menu">
+                <a href="index.html">Home</a>
+                <a href="features.html" class="active">Features</a>
+                <a href="about.html">About Us</a>
+            </nav>
+
+            <div class="nav-actions" id="navActionsAuth" style="display: flex; align-items: center; gap: 12px;">
+                <span id="navLoggedOutActions" style="display: flex; align-items: center; gap: 12px;">
+                    <a href="login.html" style="color: var(--text-primary); text-decoration: none; font-weight: 500; font-size: 0.95rem;">Log In</a>
+                    <a href="signup.html" class="dashboard-btn">Sign Up</a>
+                </span>
+                <span id="navLoggedInActions" style="display: none; align-items: center; gap: 12px;">
+                    <a href="dashboard.html" class="dashboard-btn">Dashboard</a>
+                    <button onclick="handleLogout()" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-secondary); padding: 0.5rem 0.9rem; border-radius: var(--radius-md, 10px); cursor: pointer; font-size: 0.88rem; font-weight: 500;">Log Out</button>
+                </span>
+                <button id="themeToggle" class="theme-toggle" type="button" data-theme-toggle aria-label="Switch theme">
+                    <i class="fas fa-moon" aria-hidden="true"></i>
+                </button>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- Page Header Banner -->
+    <section class="hero" style="padding: 4rem 0 3rem 0; min-height: auto;">
+        <div class="container" style="text-align: center;">
+            <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">Powerful Security Features</h1>
+            <p class="hero-subtitle" style="max-width: 700px; margin: 0 auto;">
+                Explore our comprehensive suite of non-invasive website security scanning, performance analysis, and optimization tools.
+            </p>
+        </div>
+    </section>
+
+    <!-- =========================
+         FEATURES SECTION
+    ========================== -->
+    <section class="features" id="features">
+        <div class="container">
+            <h2>Comprehensive Security Modules</h2>
+            <p class="section-subtitle">Everything you need to analyze, protect, and optimize your web presence</p>
+
+            <div class="features-grid">
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Comprehensive Security Scanning</h3>
+                    <p>Our scanner performs a wide range of security checks to give you a complete picture of your
+                        website's security posture.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <h3>Real-Time Vulnerability Detection</h3>
+                    <p>Identify critical vulnerabilities in real-time with our continuously updated vulnerability
+                        database, ensuring you stay protected against the latest threats.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <h3>SSL/TLS Certificate Analysis</h3>
+                    <p>Verify SSL certificates, check expiration dates, and ensure proper encryption protocols for
+                        secure communications.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <h3>Port & Service Scanning</h3>
+                    <p>Identify open ports, running services, and potential vulnerabilities in your server
+                        infrastructure.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Security Headers Check</h3>
+                    <p>Detect missing security headers (CSP, HSTS, X-Frame-Options) that protect against common attacks.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h3>SEO Optimization Review</h3>
+                    <p>Analyze meta tags, keywords, and search engine optimization to improve your online visibility.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h3>Performance Metrics</h3>
+                    <p>Get insights on page load times, resource optimization, and performance recommendations.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <h3>Recommendations</h3>
+                    <p>Receive personalized security recommendations based on the scan results to help you improve your
+                        website's security posture.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-pdf"></i>
+                    </div>
+                    <h3>Detailed Reports</h3>
+                    <p>Download comprehensive PDF reports with actionable recommendations and security insights.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================
+         RISKS SECTION
+    ========================== -->
+    <section class="security-risks-section">
+        <div class="risk-header">
+            <h2>
+                <i class="fas fa-exclamation-triangle"></i>
+                What Happens Without Regular Security Scans?
+            </h2>
+            <p>
+                Without proactive security scanning, your website remains
+                vulnerable to exploitation. Here are the most common
+                security risks that go undetected:
+            </p>
+        </div>
+
+        <div class="risk-grid">
+            <div class="risk-card red">
+                <div class="risk-icon">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <div class="risk-content">
+                    <h3>SSL Certificate Vulnerabilities</h3>
+                    <p>
+                        Expired or misconfigured SSL certificates expose user data
+                        to man-in-the-middle attacks, allowing hackers to intercept
+                        sensitive information like passwords and credit card details.
+                    </p>
+                    <span class="impact">
+                        <i class="fas fa-times-circle"></i>
+                        Impact: Data Breach Risk
+                    </span>
+                </div>
+            </div>
+
+            <div class="risk-card orange">
+                <div class="risk-icon">
+                    <i class="fas fa-server"></i>
+                </div>
+                <div class="risk-content">
+                    <h3>Open Ports & Exposed Services</h3>
+                    <p>
+                        Unnecessary open ports create entry points for attackers.
+                        Common vulnerabilities include exposed databases, admin panels,
+                        and outdated services running on non-standard ports.
+                    </p>
+                    <span class="impact">
+                        <i class="fas fa-times-circle"></i>
+                        Impact: Unauthorized Access
+                    </span>
+                </div>
+            </div>
+
+            <div class="risk-card yellow">
+                <div class="risk-icon">
+                    <i class="fas fa-code"></i>
+                </div>
+                <div class="risk-content">
+                    <h3>Outdated Software & Dependencies</h3>
+                    <p>
+                        Running outdated CMS, plugins, or libraries with known CVEs
+                        makes your website an easy target. Attackers scan for these
+                        vulnerabilities using automated tools.
+                    </p>
+                    <span class="impact">
+                        <i class="fas fa-times-circle"></i>
+                        Impact: Remote Code Execution
+                    </span>
+                </div>
+            </div>
+
+            <div class="risk-card pink">
+                <div class="risk-icon">
+                    <i class="fas fa-eye"></i>
+                </div>
+                <div class="risk-content">
+                    <h3>Missing Security Headers</h3>
+                    <p>
+                        Absent HTTP security headers (CSP, HSTS, X-Frame-Options)
+                        leave websites vulnerable to XSS attacks, clickjacking,
+                        and protocol downgrade attacks.
+                    </p>
+                    <span class="impact">
+                        <i class="fas fa-times-circle"></i>
+                        Impact: Cross-Site Scripting
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="risk-cta">
+            <h3>
+                Don't wait for a breach to happen.
+                Scan your website now and protect your digital assets.
+            </h3>
+            <p style="margin-top: 10px;">
+                <a href="index.html" class="dashboard-btn" style="padding: 10px 24px; font-size: 1rem;">Start Free Scan Now</a>
+            </p>
+        </div>
+    </section>
+
+    <!-- =========================
+         FOOTER
+    ========================== -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>ShieldScope</h4>
+                    <p>Making the web safer, one scan at a time.</p>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="features.html">Features</a></li>
+                        <li><a href="about.html">About</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Terms of Service</a></li>
+                        <li><a href="#">Security</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Follow Us</h4>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="https://github.com/tejdesai1256"><i class="fab fa-github"></i></a>
+                        <a href="https://www.linkedin.com/in/tej-desai-020b4625a/"><i class="fab fa-linkedin"></i></a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2026 ShieldScope. All rights reserved. Designed for enhanced web safety.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="theme.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        (async function toggleNavAuthState() {
+            const loggedOutEl = document.getElementById('navLoggedOutActions');
+            const loggedInEl = document.getElementById('navLoggedInActions');
+            const user = auth.isLoggedInLocally() ? await auth.fetchCurrentUser() : null;
+            if (user) {
+                if (loggedInEl) loggedInEl.style.display = 'flex';
+                if (loggedOutEl) loggedOutEl.style.display = 'none';
+            } else {
+                if (loggedInEl) loggedInEl.style.display = 'none';
+                if (loggedOutEl) loggedOutEl.style.display = 'flex';
+            }
+        })();
+
+        async function handleLogout() {
+            if (confirm('Are you sure you want to logout?')) {
+                await auth.logout();
+                window.location.reload();
+            }
+        }
+    </script>
+</body>
+
+</html>
