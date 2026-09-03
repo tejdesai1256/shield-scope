@@ -79,14 +79,19 @@ def sanitize_user(user: dict) -> dict:
     }
 
 def get_current_user_from_token(token: str) -> dict | None:
-    from database import users_collection
-    from bson import ObjectId
-    payload = decode_access_token(token)
-    if not payload or "sub" not in payload:
+    try:
+        from database import users_collection
+        from bson import ObjectId
+        payload = decode_access_token(token)
+        if not payload or "sub" not in payload:
+            return None
+        sub = str(payload["sub"]).strip()
+        user = users_collection.find_one({"email": sub.lower()})
+        if not user and ObjectId.is_valid(sub):
+            user = users_collection.find_one({"_id": ObjectId(sub)})
+        return sanitize_user(user)
+    except Exception as e:
+        print(f"Error retrieving user from token: {e}")
         return None
-    sub = str(payload["sub"]).strip()
-    user = users_collection.find_one({"email": sub.lower()})
-    if not user and ObjectId.is_valid(sub):
-        user = users_collection.find_one({"_id": ObjectId(sub)})
-    return sanitize_user(user)
+
 

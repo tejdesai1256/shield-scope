@@ -77,13 +77,14 @@ def _sanitize_evidence_headers(headers):
     return sanitized
 
 
-def _request_with_origin(url, origin, timeout=5, custom_headers=None, pinned_ip=None):
+def _request_with_origin(url, origin, timeout=3.5, custom_headers=None, pinned_ip=None):
     """
     Send a GET request with a specified Origin header and return CORS details.
     Safely handles network errors and limits response body size read.
     """
     headers = {
-        "User-Agent": "Mozilla/5.0 (Website-Security-Scanner CORS-Check)"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,application/json,*/*;q=0.8"
     }
     if origin is not None:
         headers["Origin"] = origin
@@ -457,72 +458,84 @@ def scan_cors(url, pinned_ip=None):
                 })
 
         # ----------------------------------------------------------------------
-        # 3. ORIGIN VALIDATION MATRIX (Suffix, Prefix, Null, Scheme)
+        # 3. ORIGIN VALIDATION MATRIX (Suffix, Prefix, Null, Scheme) - IN PARALLEL
         # ----------------------------------------------------------------------
         tests_performed.append("Origin Validation Bypass Matrix Test")
-        for test_item in origin_matrix[1:]: # Skip index 0 (already tested above)
-            ttype = test_item["type"]
-            torigin = test_item["origin"]
-            tdesc = test_item["desc"]
+        matrix_items = origin_matrix[1:]
+        
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=len(matrix_items) or 1) as matrix_executor:
+            future_to_item = {
+                matrix_executor.submit(_request_with_origin, primary_endpoint, item["origin"], 3.5, None, pinned_ip): item
+                for item in matrix_items
+            }
+            for fut in future_to_item:
+                test_item = future_to_item[fut]
+                ttype = test_item["type"]
+                torigin = test_item["origin"]
+                tdesc = test_item["desc"]
+                try:
+                    res = fut.result()
+                except Exception:
+                    res = {"success": False}
 
-            res = _request_with_origin(primary_endpoint, torigin, timeout=4, pinned_ip=pinned_ip)
-            if res.get("success") and res.get("acao") == torigin:
-                acac_flag = (res.get("acac") or "").lower() == "true"
-                has_sens, sens_t, sens_conf = inspect_sensitive_data(res)
+                if res.get("success") and res.get("acao") == torigin:
+                    acac_flag = (res.get("acac") or "").lower() == "true"
+                    has_sens, sens_t, sens_conf = inspect_sensitive_data(res)
 
-                if ttype in ["suffix_bypass", "prefix_bypass"]:
-                    sev = "CRITICAL" if (acac_flag and has_sens) else ("HIGH" if acac_flag else "HIGH")
-                    expl = "CONFIRMED_POLICY_WEAKNESS" if (acac_flag and has_sens) else "LIKELY"
-                    overall_risk = _escalate_risk(overall_risk, sev)
+                    if ttype in ["suffix_bypass", "prefix_bypass"]:
+                        sev = "CRITICAL" if (acac_flag and has_sens) else "HIGH"
+                        expl = "CONFIRMED_POLICY_WEAKNESS" if (acac_flag and has_sens) else "LIKELY"
+                        overall_risk = _escalate_risk(overall_risk, sev)
 
-                    findings.append({
-                        "title": f"CORS Validation Bypass Detected: {tdesc}",
-                        "issue": f"Origin check bypass using lookalike origin '{torigin}'",
-                        "severity": sev,
-                        "confidence": "HIGH",
-                        "exploitability": expl,
-                        "endpoint": primary_endpoint,
-                        "test_type": "Origin Bypass Test",
-                        "sensitive_data_detected": has_sens,
-                        "sensitive_data_types": sens_t,
-                        "evidence": {
-                            "tested_origin": torigin,
-                            "access_control_allow_origin": torigin,
-                            "access_control_allow_credentials": str(acac_flag)
-                        },
-                        "impact": f"The server uses flawed prefix/suffix origin matching. Attackers can register '{torigin}' to exploit cross-origin data access.",
-                        "remediation": "Validate Origin headers using exact string matching against an explicit trusted allowlist."
-                    })
+                        findings.append({
+                            "title": f"CORS Validation Bypass Detected: {tdesc}",
+                            "issue": f"Origin check bypass using lookalike origin '{torigin}'",
+                            "severity": sev,
+                            "confidence": "HIGH",
+                            "exploitability": expl,
+                            "endpoint": primary_endpoint,
+                            "test_type": "Origin Bypass Test",
+                            "sensitive_data_detected": has_sens,
+                            "sensitive_data_types": sens_t,
+                            "evidence": {
+                                "tested_origin": torigin,
+                                "access_control_allow_origin": torigin,
+                                "access_control_allow_credentials": str(acac_flag)
+                            },
+                            "impact": f"The server uses flawed prefix/suffix origin matching. Attackers can register '{torigin}' to exploit cross-origin data access.",
+                            "remediation": "Validate Origin headers using exact string matching against an explicit trusted allowlist."
+                        })
 
-                elif ttype == "null_origin":
-                    sev = "CRITICAL" if (acac_flag and has_sens) else ("HIGH" if acac_flag else "MEDIUM")
-                    overall_risk = _escalate_risk(overall_risk, sev)
+                    elif ttype == "null_origin":
+                        sev = "CRITICAL" if (acac_flag and has_sens) else ("HIGH" if acac_flag else "MEDIUM")
+                        overall_risk = _escalate_risk(overall_risk, sev)
 
-                    findings.append({
-                        "title": "CORS Weakness: Trusting Null Origin ('Access-Control-Allow-Origin: null')",
-                        "issue": "Explicitly accepting 'null' origin in CORS policy",
-                        "severity": sev,
-                        "confidence": "HIGH",
-                        "exploitability": "LIKELY" if acac_flag else "POTENTIAL",
-                        "endpoint": primary_endpoint,
-                        "test_type": "Null Origin Test",
-                        "sensitive_data_detected": has_sens,
-                        "sensitive_data_types": sens_t,
-                        "evidence": {
-                            "request_origin": "null",
-                            "access_control_allow_origin": "null",
-                            "access_control_allow_credentials": str(acac_flag)
-                        },
-                        "impact": "Attackers can trigger null-origin requests using sandboxed HTML5 iframes (`<iframe sandbox='allow-scripts'>`) to bypass origin checks.",
-                        "remediation": "Avoid returning 'null' in Access-Control-Allow-Origin."
-                    })
+                        findings.append({
+                            "title": "CORS Weakness: Trusting Null Origin ('Access-Control-Allow-Origin: null')",
+                            "issue": "Explicitly accepting 'null' origin in CORS policy",
+                            "severity": sev,
+                            "confidence": "HIGH",
+                            "exploitability": "LIKELY" if acac_flag else "POTENTIAL",
+                            "endpoint": primary_endpoint,
+                            "test_type": "Null Origin Test",
+                            "sensitive_data_detected": has_sens,
+                            "sensitive_data_types": sens_t,
+                            "evidence": {
+                                "request_origin": "null",
+                                "access_control_allow_origin": "null",
+                                "access_control_allow_credentials": str(acac_flag)
+                            },
+                            "impact": "Attackers can trigger null-origin requests using sandboxed HTML5 iframes (`<iframe sandbox='allow-scripts'>`) to bypass origin checks.",
+                            "remediation": "Avoid returning 'null' in Access-Control-Allow-Origin."
+                        })
 
         # ----------------------------------------------------------------------
         # 4. DYNAMIC VARY: ORIGIN CHECK
         # ----------------------------------------------------------------------
         tests_performed.append("Vary: Origin Cache Check")
         res_a = primary_res
-        res_b = _request_with_origin(primary_endpoint, SECONDARY_ATTACKER_ORIGIN, timeout=4, pinned_ip=pinned_ip)
+        res_b = _request_with_origin(primary_endpoint, SECONDARY_ATTACKER_ORIGIN, timeout=3.5, pinned_ip=pinned_ip)
 
         if res_a.get("success") and res_b.get("success"):
             acao_a = res_a.get("acao")
@@ -585,9 +598,9 @@ def scan_cors(url, pinned_ip=None):
                 "Origin": DEFAULT_ATTACKER_ORIGIN,
                 "Access-Control-Request-Method": "POST",
                 "Access-Control-Request-Headers": "Authorization, Content-Type",
-                "User-Agent": "Mozilla/5.0 (Website-Security-Scanner CORS-Check)"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
             }
-            opt_resp = safe_request("OPTIONS", primary_endpoint, pinned_ip=pinned_ip, headers=pf_headers, timeout=5)
+            opt_resp = safe_request("OPTIONS", primary_endpoint, pinned_ip=pinned_ip, headers=pf_headers, timeout=3.5)
             pf_acao = opt_resp.headers.get("Access-Control-Allow-Origin")
             pf_acam = opt_resp.headers.get("Access-Control-Allow-Methods") or ""
             pf_acah = opt_resp.headers.get("Access-Control-Allow-Headers") or ""
@@ -599,24 +612,21 @@ def scan_cors(url, pinned_ip=None):
                 "acah": pf_acah
             }
 
-            allowed_methods = [m.strip().upper() for m in pf_acam.split(",")]
-            allowed_headers = [h.strip().lower() for h in pf_acah.split(",")]
-
-            has_wildcard_or_sens_method = any(m in allowed_methods for m in ["DELETE", "PUT", "PATCH", "*"])
-            has_auth = any(h in allowed_headers for h in ["authorization", "*"])
-
-            if pf_acao == DEFAULT_ATTACKER_ORIGIN and has_wildcard_or_sens_method and has_auth:
+            if pf_acao == DEFAULT_ATTACKER_ORIGIN and ("authorization" in pf_acah.lower() or "post" in pf_acam.lower() or "delete" in pf_acam.lower()):
                 overall_risk = _escalate_risk(overall_risk, "HIGH")
                 findings.append({
-                    "title": "Preflight Policy Weakness: Sensitive Methods and Auth Headers Allowed for Untrusted Origin",
-                    "issue": "Preflight permits state-changing HTTP methods and Authorization headers for arbitrary origins",
+                    "title": "Permissive Preflight Policy: Arbitrary Origin Allowed with Sensitive Methods/Headers",
+                    "issue": "OPTIONS preflight grants access to arbitrary origin for authenticated/sensitive methods",
                     "severity": "HIGH",
                     "confidence": "HIGH",
-                    "exploitability": "POTENTIAL",
+                    "exploitability": "LIKELY",
                     "endpoint": primary_endpoint,
-                    "test_type": "Preflight Check",
+                    "test_type": "Preflight OPTIONS Check",
+                    "sensitive_data_detected": False,
+                    "sensitive_data_types": [],
                     "evidence": {
-                        "preflight_origin": DEFAULT_ATTACKER_ORIGIN,
+                        "tested_origin": DEFAULT_ATTACKER_ORIGIN,
+                        "access_control_allow_origin": pf_acao,
                         "allowed_methods": pf_acam,
                         "allowed_headers": pf_acah
                     },
@@ -627,39 +637,50 @@ def scan_cors(url, pinned_ip=None):
             logger.warning(f"CORS Scanner: Preflight check failed for {primary_endpoint}: {pe}")
 
         # ----------------------------------------------------------------------
-        # 7. SUBPATH ENDPOINT COMPARISON TEST
+        # 7. SUBPATH ENDPOINT COMPARISON TEST - IN PARALLEL
         # ----------------------------------------------------------------------
         tests_performed.append("API Subpath Endpoint Coverage Check")
-        if len(endpoints_to_test) > 1:
-            for sub_ep in endpoints_to_test[1:]:
-                res_sub = _request_with_origin(sub_ep, DEFAULT_ATTACKER_ORIGIN, timeout=3, pinned_ip=pinned_ip)
-                if res_sub.get("success") and res_sub.get("status_code") != 404:
-                    sub_acao = res_sub.get("acao")
-                    sub_acac = (res_sub.get("acac") or "").lower() == "true"
-                    sub_sens, sub_t, sub_conf = inspect_sensitive_data(res_sub)
+        sub_endpoints = endpoints_to_test[1:4]
+        if sub_endpoints:
+            with ThreadPoolExecutor(max_workers=len(sub_endpoints)) as sub_executor:
+                future_to_sub = {
+                    sub_executor.submit(_request_with_origin, sub_ep, DEFAULT_ATTACKER_ORIGIN, 3.0, None, pinned_ip): sub_ep
+                    for sub_ep in sub_endpoints
+                }
+                for fut in future_to_sub:
+                    sub_ep = future_to_sub[fut]
+                    try:
+                        res_sub = fut.result()
+                    except Exception:
+                        continue
 
-                    if sub_acao == DEFAULT_ATTACKER_ORIGIN and primary_acao != DEFAULT_ATTACKER_ORIGIN:
-                        sev = "CRITICAL" if (sub_acac and sub_sens) else ("HIGH" if sub_acac else "HIGH")
-                        overall_risk = _escalate_risk(overall_risk, sev)
+                    if res_sub.get("success") and res_sub.get("status_code") != 404:
+                        sub_acao = res_sub.get("acao")
+                        sub_acac = (res_sub.get("acac") or "").lower() == "true"
+                        sub_sens, sub_t, sub_conf = inspect_sensitive_data(res_sub)
 
-                        findings.append({
-                            "title": f"Endpoint-Specific CORS Misconfiguration on Discovered API Route ({urlparse(sub_ep).path})",
-                            "issue": "Discovered subpath reflects untrusted origins despite root page having strict policy",
-                            "severity": sev,
-                            "confidence": "HIGH",
-                            "exploitability": "CONFIRMED_POLICY_WEAKNESS" if (sub_acac and sub_sens) else "LIKELY",
-                            "endpoint": sub_ep,
-                            "test_type": "Endpoint Discovery Check",
-                            "sensitive_data_detected": sub_sens,
-                            "sensitive_data_types": sub_t,
-                            "evidence": {
-                                "discovered_endpoint": sub_ep,
-                                "access_control_allow_origin": sub_acao,
-                                "access_control_allow_credentials": str(sub_acac)
-                            },
-                            "impact": "Root domain CORS settings are not consistently inherited across API routes, exposing subpath endpoints to cross-origin extraction.",
-                            "remediation": "Apply consistent CORS origin validation middleware across all API subpaths."
-                        })
+                        if sub_acao == DEFAULT_ATTACKER_ORIGIN and primary_acao != DEFAULT_ATTACKER_ORIGIN:
+                            sev = "CRITICAL" if (sub_acac and sub_sens) else "HIGH"
+                            overall_risk = _escalate_risk(overall_risk, sev)
+
+                            findings.append({
+                                "title": f"Endpoint-Specific CORS Misconfiguration on Discovered API Route ({urlparse(sub_ep).path})",
+                                "issue": "Discovered subpath reflects untrusted origins despite root page having strict policy",
+                                "severity": sev,
+                                "confidence": "HIGH",
+                                "exploitability": "CONFIRMED_POLICY_WEAKNESS" if (sub_acac and sub_sens) else "LIKELY",
+                                "endpoint": sub_ep,
+                                "test_type": "Endpoint Discovery Check",
+                                "sensitive_data_detected": sub_sens,
+                                "sensitive_data_types": sub_t,
+                                "evidence": {
+                                    "discovered_endpoint": sub_ep,
+                                    "access_control_allow_origin": sub_acao,
+                                    "access_control_allow_credentials": str(sub_acac)
+                                },
+                                "impact": "Root domain CORS settings are not consistently inherited across API routes, exposing subpath endpoints to cross-origin extraction.",
+                                "remediation": "Apply consistent CORS origin validation middleware across all API subpaths."
+                            })
 
         # ----------------------------------------------------------------------
         # 8. DEFAULT INFORMATIONAL FINDING IF SAFE

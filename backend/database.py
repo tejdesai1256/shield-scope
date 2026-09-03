@@ -1,6 +1,16 @@
 import os
+import dns.resolver
 from pymongo import MongoClient
 from dotenv import load_dotenv
+
+# Ensure dnspython uses reliable public DNS nameservers for MongoDB Atlas SRV resolution
+try:
+    dns.resolver.default_resolver = dns.resolver.Resolver(configure=False)
+    dns.resolver.default_resolver.nameservers = ['8.8.8.8', '1.1.1.1', '8.8.4.4']
+    dns.resolver.default_resolver.timeout = 5.0
+    dns.resolver.default_resolver.lifetime = 10.0
+except Exception:
+    pass
 
 load_dotenv()
 
@@ -9,7 +19,7 @@ MONGODB_URI = os.getenv("MONGODB_URI")
 if not MONGODB_URI:
     raise ValueError("MONGODB_URI is not configured")
 
-client = MongoClient(MONGODB_URI)
+client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
 
 db = client["website_security_scanner"]
 
@@ -25,4 +35,5 @@ try:
     scheduled_scans_collection.create_index([("userId", 1)], unique=True)
 except Exception as e:
     print("MongoDB connection failed:", e)
+
 

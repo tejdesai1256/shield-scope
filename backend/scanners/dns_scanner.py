@@ -11,6 +11,8 @@ def scan_dns(url, pinned_ip=None):
             url = "https://" + url
 
         hostname = urlparse(url).hostname
+        if not hostname:
+            return {"success": False, "error": "Invalid hostname"}
 
         result = {
             "success": True,
@@ -18,35 +20,43 @@ def scan_dns(url, pinned_ip=None):
         }
 
         # IP Address
-        try:
-            result["ip_address"] = socket.gethostbyname(hostname)
-        except:
-            result["ip_address"] = "Not Found"
+        if pinned_ip:
+            result["ip_address"] = pinned_ip
+        else:
+            try:
+                result["ip_address"] = socket.gethostbyname(hostname)
+            except Exception:
+                result["ip_address"] = "Not Found"
+
+        resolver = dns.resolver.Resolver()
+        resolver.timeout = 2.0
+        resolver.lifetime = 2.5
+        resolver.nameservers = ['8.8.8.8', '1.1.1.1', '8.8.4.4']
 
         # A Records
         try:
-            answers = dns.resolver.resolve(hostname, "A")
+            answers = resolver.resolve(hostname, "A")
             result["A"] = [str(r) for r in answers]
-        except:
-            result["A"] = []
+        except Exception:
+            result["A"] = [result["ip_address"]] if result.get("ip_address") and result["ip_address"] != "Not Found" else []
 
         # MX Records
         try:
-            answers = dns.resolver.resolve(hostname, "MX")
+            answers = resolver.resolve(hostname, "MX")
             result["MX"] = [str(r.exchange) for r in answers]
-        except:
+        except Exception:
             result["MX"] = []
 
         # NS Records
         try:
-            answers = dns.resolver.resolve(hostname, "NS")
+            answers = resolver.resolve(hostname, "NS")
             result["NS"] = [str(r.target) for r in answers]
-        except:
+        except Exception:
             result["NS"] = []
 
         # TXT Records
         try:
-            answers = dns.resolver.resolve(hostname, "TXT")
+            answers = resolver.resolve(hostname, "TXT")
             result["TXT"] = [
                 "".join(
                     txt.decode() if isinstance(txt, bytes) else txt
@@ -54,7 +64,7 @@ def scan_dns(url, pinned_ip=None):
                 )
                 for r in answers
             ]
-        except:
+        except Exception:
             result["TXT"] = []
 
         # SPF (from TXT records you already fetched)
@@ -64,7 +74,7 @@ def scan_dns(url, pinned_ip=None):
 
         # DMARC (separate lookup)
         try:
-            dmarc_answers = dns.resolver.resolve(f"_dmarc.{hostname}", "TXT")
+            dmarc_answers = resolver.resolve(f"_dmarc.{hostname}", "TXT")
             dmarc_txt = "".join(
                 r.strings[0].decode() if isinstance(r.strings[0], bytes) else r.strings[0]
                 for r in dmarc_answers
@@ -82,4 +92,4 @@ def scan_dns(url, pinned_ip=None):
         return {
             "success": False,
             "error": str(e)
-        }
+        }

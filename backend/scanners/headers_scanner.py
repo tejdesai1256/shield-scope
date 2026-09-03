@@ -3,7 +3,10 @@ from services.url_validator import safe_get
 def scan_headers(url, pinned_ip=None):
 
     try:
-        response = safe_get(url, pinned_ip=pinned_ip, timeout=5)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+        response = safe_get(url, pinned_ip=pinned_ip, headers=headers, timeout=5)
 
         headers = response.headers
 

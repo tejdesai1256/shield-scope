@@ -82,9 +82,10 @@ SIGNATURES = {
     "/actuator/env":      ["propertySources", "systemEnvironment"],
 }
 
-MAX_WORKERS = 10
-REQUEST_TIMEOUT = 5
+MAX_WORKERS = 15
+REQUEST_TIMEOUT = 3.5
 MAX_BODY_BYTES = 8192
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 
 def _get_baseline(base_url, pinned_ip=None):
@@ -101,7 +102,7 @@ def _get_baseline(base_url, pinned_ip=None):
             timeout=REQUEST_TIMEOUT,
             allow_redirects=False,
             stream=True,
-            headers={"User-Agent": "Mozilla/5.0 (Website-Security-Scanner Path-Check)"}
+            headers={"User-Agent": USER_AGENT}
         )
         body = bytearray()
         try:
@@ -148,7 +149,7 @@ def _check_path(base_url, path, description, severity, category, baseline, pinne
             timeout=REQUEST_TIMEOUT,
             allow_redirects=False,
             stream=True,
-            headers={"User-Agent": "Mozilla/5.0 (Website-Security-Scanner Path-Check)"}
+            headers={"User-Agent": USER_AGENT}
         )
         body = bytearray()
         stopped_early = False

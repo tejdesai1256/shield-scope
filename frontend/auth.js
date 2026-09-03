@@ -7,10 +7,18 @@ window.getBackendBaseUrl = function() {
     const hostname = window.location.hostname || '';
     const protocol = window.location.protocol || '';
 
-    // Local development environment check (only when explicitly serving from localhost/127.0.0.1 with port 8000)
+    // Local development environment check (localhost, 127.0.0.1, file:// protocol, or local web servers)
     if (
-        (hostname === 'localhost' || hostname === '127.0.0.1') &&
-        (origin.includes('8000') || window.location.port === '8000')
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname === '' ||
+        protocol === 'file:' ||
+        origin.startsWith('file:') ||
+        origin.includes('5500') ||
+        origin.includes('3000') ||
+        origin.includes('5173') ||
+        origin.includes('8000') ||
+        origin.includes('8080')
     ) {
         return 'http://127.0.0.1:8000';
     }
@@ -21,7 +29,6 @@ window.getBackendBaseUrl = function() {
     }
 
     // Deployed on Netlify, Vercel, GitHub Pages, or external frontend domain
-    // Connects to live backend API hosted on Render
     return window.API_BASE_URL;
 };
 

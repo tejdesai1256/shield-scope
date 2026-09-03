@@ -59,33 +59,17 @@ else:
         allow_headers=["*"],
     )
 
-# FastAPI Optional Authentication Dependency (Guests allowed if header omitted; invalid/expired token returns 401)
+# FastAPI Optional Authentication Dependency (Guests allowed if header omitted or invalid/expired)
 def get_current_user_optional(authorization: str = Header(None, alias="Authorization")):
-    if not authorization:
+    if not authorization or not authorization.startswith("Bearer "):
         return None
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authorization header format",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
-    
     token = authorization.split(" ")[1].strip() if len(authorization.split(" ")) > 1 else ""
     if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
-        
-    user = get_current_user_from_token(token)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
-    return user
+        return None
+    try:
+        return get_current_user_from_token(token)
+    except Exception:
+        return None
 
 def get_current_user(authorization: str = Header(None, alias="Authorization")):
     user = get_current_user_optional(authorization)
@@ -96,6 +80,7 @@ def get_current_user(authorization: str = Header(None, alias="Authorization")):
             headers={"WWW-Authenticate": "Bearer"}
         )
     return user
+
 
 # Request models
 class ScanRequest(BaseModel):
@@ -320,20 +305,70 @@ def get_fallback_scans(reason: str = "Scan unavailable"):
         "exposed_paths": {"success": False, "findings": [], "error": reason}
     }
 
+def run_safe(scanner_fn, *args, default_dict=None):
+    try:
+        res = scanner_fn(*args)
+        if isinstance(res, dict):
+            return res
+        return default_dict or {"success": False, "error": "Invalid scanner return format"}
+    except Exception as ex:
+        print(f"Scanner exception ({scanner_fn.__name__}): {ex}")
+        return default_dict or {"success": False, "error": str(ex)}
+
+from concurrent.futures import ThreadPoolExecutor
+
+def execute_all_scanners(target_url: str, resolved_ip: str):
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        f_headers = executor.submit(run_safe, scan_headers, target_url, resolved_ip, default_dict={"success": False, "headers": {}, "missing_headers": []})
+        f_ssl = executor.submit(run_safe, scan_ssl, target_url, resolved_ip, default_dict={"success": False, "ssl_enabled": False})
+        f_ports = executor.submit(run_safe, scan_ports, target_url, resolved_ip, default_dict={"success": False, "open_ports": [], "vulnerable_ports": [], "vulnerability_counts": {}})
+        f_seo = executor.submit(run_safe, scan_seo, target_url, resolved_ip, default_dict={"success": False, "title": "Not Found", "h1_count": 0, "missing_alt_images": 0})
+        f_dns = executor.submit(run_safe, scan_dns, target_url, resolved_ip, default_dict={"success": False, "ip_address": resolved_ip or "Not Found", "A": [], "MX": [], "NS": [], "TXT": []})
+        f_tech = executor.submit(run_safe, scan_technology, target_url, resolved_ip, default_dict={"success": False, "technologies": {}})
+        f_perf = executor.submit(run_safe, scan_performance, target_url, resolved_ip, default_dict={"success": False, "performance_score": 50})
+        f_info = executor.submit(run_safe, scan_info, target_url, resolved_ip, default_dict={"success": False})
+        f_cors = executor.submit(run_safe, scan_cors, target_url, resolved_ip, default_dict={"success": False, "risk_level": "LOW", "findings": []})
+        f_exposed = executor.submit(run_safe, scan_exposed_paths, target_url, resolved_ip, default_dict={"success": False, "findings": []})
+
+        headers_result = f_headers.result()
+        ssl_result = f_ssl.result()
+        ports_result = f_ports.result()
+        seo_result = f_seo.result()
+        dns_result = f_dns.result()
+        technology_result = f_tech.result()
+        performance_result = f_perf.result()
+        info_result = f_info.result()
+        cors_result = f_cors.result()
+        exposed_paths_result = f_exposed.result()
+
+    return {
+        "headers": headers_result,
+        "ssl": ssl_result,
+        "ports": ports_result,
+        "seo": seo_result,
+        "dns": dns_result,
+        "technology": technology_result,
+        "performance": performance_result,
+        "info": info_result,
+        "cors": cors_result,
+        "exposed_paths": exposed_paths_result
+    }
+
 # Scan route
 @app.post("/scan")
-def scan_website(data: ScanRequest, current_user: dict = Depends(get_current_user)):
-    scans_left = current_user.get("scans_remaining", 0)
-    if scans_left <= 0:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No scans remaining"
-        )
+def scan_website(data: ScanRequest, current_user: dict = Depends(get_current_user_optional)):
+    if current_user:
+        scans_left = current_user.get("scans_remaining", 0)
+        if scans_left <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No scans remaining. Please upgrade your account."
+            )
 
-    users_collection.update_one(
-        {"email": current_user["email"]},
-        {"$inc": {"scans_remaining": -1}}
-    )
+        users_collection.update_one(
+            {"email": current_user["email"]},
+            {"$inc": {"scans_remaining": -1}}
+        )
     try:
         # Normalize and clean input URL
         target_url = data.url.strip().replace(" ", "")
@@ -360,26 +395,17 @@ def scan_website(data: ScanRequest, current_user: dict = Depends(get_current_use
                 "scans": get_fallback_scans(reason)
             }
 
-        def run_safe(scanner_fn, *args, default_dict=None):
-            try:
-                res = scanner_fn(*args)
-                if isinstance(res, dict):
-                    return res
-                return default_dict or {"success": False, "error": "Invalid scanner return format"}
-            except Exception as ex:
-                print(f"Scanner exception ({scanner_fn.__name__}): {ex}")
-                return default_dict or {"success": False, "error": str(ex)}
-
-        headers_result = run_safe(scan_headers, target_url, resolved_ip, default_dict={"success": False, "headers": {}, "missing_headers": []})
-        ssl_result = run_safe(scan_ssl, target_url, resolved_ip, default_dict={"success": False, "ssl_enabled": False})
-        ports_result = run_safe(scan_ports, target_url, resolved_ip, default_dict={"success": False, "open_ports": [], "vulnerable_ports": [], "vulnerability_counts": {}})
-        seo_result = run_safe(scan_seo, target_url, resolved_ip, default_dict={"success": False, "title": "Not Found", "h1_count": 0, "missing_alt_images": 0})
-        dns_result = run_safe(scan_dns, target_url, resolved_ip, default_dict={"success": False, "ip_address": resolved_ip or "Not Found", "A": [], "MX": [], "NS": [], "TXT": []})
-        technology_result = run_safe(scan_technology, target_url, resolved_ip, default_dict={"success": False, "technologies": {}})
-        performance_result = run_safe(scan_performance, target_url, resolved_ip, default_dict={"success": False, "performance_score": 50})
-        info_result = run_safe(scan_info, target_url, resolved_ip, default_dict={"success": False})
-        cors_result = run_safe(scan_cors, target_url, resolved_ip, default_dict={"success": False, "risk_level": "LOW", "findings": []})
-        exposed_paths_result = run_safe(scan_exposed_paths, target_url, resolved_ip, default_dict={"success": False, "findings": []})
+        full_scans_dict = execute_all_scanners(target_url, resolved_ip)
+        headers_result = full_scans_dict["headers"]
+        ssl_result = full_scans_dict["ssl"]
+        ports_result = full_scans_dict["ports"]
+        seo_result = full_scans_dict["seo"]
+        dns_result = full_scans_dict["dns"]
+        technology_result = full_scans_dict["technology"]
+        performance_result = full_scans_dict["performance"]
+        info_result = full_scans_dict["info"]
+        cors_result = full_scans_dict["cors"]
+        exposed_paths_result = full_scans_dict["exposed_paths"]
 
         score_result = calculate_score(
             headers_result,
@@ -423,8 +449,8 @@ def scan_website(data: ScanRequest, current_user: dict = Depends(get_current_use
         try:
             from database import scans_collection
             scan_doc = {
-                "userId": current_user["id"],
-                "email": current_user["email"],
+                "userId": current_user["id"] if current_user else None,
+                "email": current_user["email"] if current_user else "guest@shieldscope.local",
                 "url": target_url,
                 "score": score_result.get("security_score", 50) if score_result else 50,
                 "risk_level": score_result.get("risk_level", "UNKNOWN") if score_result else "UNKNOWN",
@@ -437,6 +463,7 @@ def scan_website(data: ScanRequest, current_user: dict = Depends(get_current_use
             scan_id_str = str(res.inserted_id)
         except Exception as scan_err:
             print(f"Error saving scan document to MongoDB: {scan_err}")
+
 
         return {
             "id": scan_id_str,
@@ -729,82 +756,77 @@ from datetime import timedelta
 scheduler = BackgroundScheduler()
 
 def run_scheduled_jobs():
-    from database import scheduled_scans_collection, scans_collection, users_collection
-    now_dt = datetime.now(timezone.utc)
-    now_iso = now_dt.isoformat()
-    
-    schedules = list(scheduled_scans_collection.find({}))
-    for s in schedules:
-        try:
-            next_run_str = s.get("next_run")
-            if next_run_str and datetime.fromisoformat(next_run_str) > now_dt:
-                continue
-            
-            target_url = s.get("url")
-            user_id = s.get("userId")
+    try:
+        from database import scheduled_scans_collection, scans_collection, users_collection
+        now_dt = datetime.now(timezone.utc)
+        now_iso = now_dt.isoformat()
+        
+        schedules = list(scheduled_scans_collection.find({}))
+        for s in schedules:
+            try:
+                next_run_str = s.get("next_run")
+                if next_run_str and datetime.fromisoformat(next_run_str) > now_dt:
+                    continue
+                
+                target_url = s.get("url")
+                user_id = s.get("userId")
 
-            is_valid, resolved_ip, reason = validate_public_url(target_url)
-            if not is_valid:
-                print(f"[Scheduler] SSRF validation failed for scheduled target {target_url}: {reason}")
-                continue
+                is_valid, resolved_ip, reason = validate_public_url(target_url)
+                if not is_valid:
+                    print(f"[Scheduler] SSRF validation failed for scheduled target {target_url}: {reason}")
+                    continue
 
-            headers_result = run_safe(scan_headers, target_url, resolved_ip, default_dict={"success": False, "headers": {}, "missing_headers": []})
-            ssl_result = run_safe(scan_ssl, target_url, resolved_ip, default_dict={"success": False, "ssl_enabled": False})
-            ports_result = run_safe(scan_ports, target_url, resolved_ip, default_dict={"success": False, "open_ports": [], "vulnerable_ports": [], "vulnerability_counts": {}})
-            seo_result = run_safe(scan_seo, target_url, resolved_ip, default_dict={"success": False, "title": "Not Found", "h1_count": 0, "missing_alt_images": 0})
-            dns_result = run_safe(scan_dns, target_url, resolved_ip, default_dict={"success": False, "ip_address": resolved_ip or "Not Found", "A": [], "MX": [], "NS": [], "TXT": []})
-            technology_result = run_safe(scan_technology, target_url, resolved_ip, default_dict={"success": False, "technologies": {}})
-            performance_result = run_safe(scan_performance, target_url, resolved_ip, default_dict={"success": False, "performance_score": 50})
-            info_result = run_safe(scan_info, target_url, resolved_ip, default_dict={"success": False})
-            cors_result = run_safe(scan_cors, target_url, resolved_ip, default_dict={"success": False, "risk_level": "LOW", "findings": []})
-            exposed_paths_result = run_safe(scan_exposed_paths, target_url, resolved_ip, default_dict={"success": False, "findings": []})
+                full_scans_dict = execute_all_scanners(target_url, resolved_ip)
+                headers_result = full_scans_dict["headers"]
+                ssl_result = full_scans_dict["ssl"]
+                ports_result = full_scans_dict["ports"]
+                seo_result = full_scans_dict["seo"]
+                dns_result = full_scans_dict["dns"]
+                technology_result = full_scans_dict["technology"]
+                performance_result = full_scans_dict["performance"]
+                info_result = full_scans_dict["info"]
+                cors_result = full_scans_dict["cors"]
+                exposed_paths_result = full_scans_dict["exposed_paths"]
 
-            score_result = calculate_score(
-                headers_result, ssl_result, ports_result, seo_result, performance_result, dns_result, cors_result, exposed_paths=exposed_paths_result
-            )
-            human_summary = generate_human_summary(
-                info_result, score_result, ssl_result, headers_result, ports_result, performance_result
-            )
+                score_result = calculate_score(
+                    headers_result, ssl_result, ports_result, seo_result, performance_result, dns_result, cors_result, exposed_paths=exposed_paths_result
+                )
+                human_summary = generate_human_summary(
+                    info_result, score_result, ssl_result, headers_result, ports_result, performance_result
+                )
 
-            freq = s.get("frequency", "weekly")
-            next_dt = now_dt + (timedelta(days=1) if freq == "daily" else timedelta(days=7))
+                freq = s.get("frequency", "weekly")
+                next_dt = now_dt + (timedelta(days=1) if freq == "daily" else timedelta(days=7))
 
-            scan_doc = {
-                "userId": user_id,
-                "email": s.get("email"),
-                "url": target_url,
-                "score": score_result.get("security_score", 50) if score_result else 50,
-                "risk_level": score_result.get("risk_level", "UNKNOWN") if score_result else "UNKNOWN",
-                "createdAt": now_iso,
-                "is_scheduled": True,
-                "summary": {
-                    "security_score": score_result.get("security_score", 50) if score_result else 50,
+                scan_doc = {
+                    "userId": user_id,
+                    "email": s.get("email"),
+                    "url": target_url,
+                    "score": score_result.get("security_score", 50) if score_result else 50,
                     "risk_level": score_result.get("risk_level", "UNKNOWN") if score_result else "UNKNOWN",
-                    "recommendations": score_result.get("recommendations", []) if score_result else [],
-                    "human_summary": human_summary
-                },
-                "website_info": info_result,
-                "scans": {
-                    "ssl": ssl_result,
-                    "headers": headers_result,
-                    "ports": ports_result,
-                    "seo": seo_result,
-                    "dns": dns_result,
-                    "performance": performance_result,
-                    "technology": technology_result,
-                    "cors": cors_result,
-                    "exposed_paths": exposed_paths_result
+                    "createdAt": now_iso,
+                    "is_scheduled": True,
+                    "summary": {
+                        "security_score": score_result.get("security_score", 50) if score_result else 50,
+                        "risk_level": score_result.get("risk_level", "UNKNOWN") if score_result else "UNKNOWN",
+                        "recommendations": score_result.get("recommendations", []) if score_result else [],
+                        "human_summary": human_summary
+                    },
+                    "website_info": info_result,
+                    "scans": full_scans_dict
                 }
-            }
-            scans_collection.insert_one(scan_doc)
+                scans_collection.insert_one(scan_doc)
 
-            scheduled_scans_collection.update_one(
-                {"_id": s["_id"]},
-                {"$set": {"next_run": next_dt.isoformat(), "last_run": now_iso}}
-            )
-            print(f"[Scheduler] Completed scheduled scan for {target_url} (User: {user_id})")
-        except Exception as ex:
-            print(f"[Scheduler] Error processing scheduled scan for {s}: {ex}")
+                scheduled_scans_collection.update_one(
+                    {"_id": s["_id"]},
+                    {"$set": {"next_run": next_dt.isoformat(), "last_run": now_iso}}
+                )
+                print(f"[Scheduler] Completed scheduled scan for {target_url} (User: {user_id})")
+            except Exception as ex:
+                print(f"[Scheduler] Error processing scheduled scan for {s}: {ex}")
+    except Exception as outer_ex:
+        print(f"[Scheduler] Background scheduler loop error: {outer_ex}")
+
 
 @app.on_event("startup")
 def start_background_jobs():

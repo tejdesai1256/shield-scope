@@ -144,7 +144,7 @@ def scan_ports(url, pinned_ip=None):
             "open_ports": open_ports,
             "vulnerable_ports": vulnerable_ports,
             "vulnerability_counts": counts,
-            "risk_notes": {p["port"]: p["note"] for p in open_ports if p["note"]}
+            "risk_notes": {str(p["port"]): p["note"] for p in open_ports if p["note"]}
         }
 
     except socket.gaierror:
