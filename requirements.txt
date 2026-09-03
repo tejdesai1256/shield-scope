@@ -10,3 +10,5 @@ PyJWT
 pymongo
 bcrypt
 python-jose[cryptography]
+reportlab
+apscheduler

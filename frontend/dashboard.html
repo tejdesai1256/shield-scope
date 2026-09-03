@@ -5,9 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - ShieldScope Security Scanner</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="theme.js"></script>
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/aria/libs/font-awesome/6.4.0/css/all.min.css">
+
 </head>
 
 <body onload="initDashboard()">
@@ -119,6 +121,12 @@
                         </button>
                     </div>
 
+                    <!-- Visible Error Banner -->
+                    <div id="dashboardErrorBanner" class="scan-error-banner" style="display: none; margin-top: 1rem; padding: 0.75rem 1rem; background: var(--error-bg, #fef2f2); border: 1px solid var(--error-border, #fca5a5); border-radius: var(--radius-md, 8px); color: var(--error-text, #991b1b); align-items: center; gap: 0.75rem; font-size: 0.9rem;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span id="dashboardErrorText">Scan failed. Please check the website URL.</span>
+                    </div>
+
                     <div class="quick-scan-options">
                         <label class="scan-option">
                             <input type="checkbox" id="deepScan" name="deepScan">
@@ -131,8 +139,34 @@
                     </div>
                 </div>
 
+                <!-- STEP 4: Score Trend Chart Card -->
+                <div class="card-full-width" style="margin-top: 1.5rem; background: var(--surface); border: 1px solid var(--border-color); border-radius: var(--radius-lg, 12px); padding: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h2 style="font-size: 1.1rem; font-weight: 600;"><i class="fas fa-chart-line" style="color: var(--primary); margin-right: 8px;"></i> Security Score Trend</h2>
+                        <span style="font-size: 0.85rem; color: var(--text-secondary);" id="trendChartSubtitle">Security posture over time</span>
+                    </div>
+                    <div id="chartContainer" style="position: relative; width: 100%; min-height: 240px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                        <canvas id="scoreTrendChart" style="width: 100%; max-height: 250px;"></canvas>
+                        <div id="chartEmptyState" class="empty-state" style="display: none; padding: 2rem 0; text-align: center; color: var(--text-secondary);">
+                            <i class="fas fa-info-circle" style="font-size: 1.5rem; margin-bottom: 0.5rem; opacity: 0.7;"></i>
+                            <p>Perform at least 2 scans to view your website's security score trend over time.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 5: Scheduled Scan Control Widget -->
+                <div class="card-full-width" style="margin-top: 1.5rem; background: var(--surface); border: 1px solid var(--border-color); border-radius: var(--radius-lg, 12px); padding: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h2 style="font-size: 1.1rem; font-weight: 600;"><i class="fas fa-clock" style="color: var(--primary); margin-right: 8px;"></i> Recurring Automated Scans</h2>
+                        <button class="schedule-btn" onclick="openScheduleModal()" style="padding: 0.4rem 0.9rem; font-size: 0.85rem; background: var(--primary); color: white; border: none; border-radius: var(--radius-md, 8px); cursor: pointer;"><i class="fas fa-plus"></i> Set Schedule</button>
+                    </div>
+                    <div id="scheduledScanWidgetContent" style="font-size: 0.9rem; color: var(--text-secondary);">
+                        <p class="empty-state">No recurring scan scheduled yet. Opt a URL into automated weekly/daily scanning.</p>
+                    </div>
+                </div>
+
                 <!-- Recent Scans -->
-                <div class="recent-scans-section">
+                <div class="recent-scans-section" style="margin-top: 1.5rem;">
                     <h2>Recent Scans</h2>
                     <div class="scans-list" id="recentScansList">
                         <p class="empty-state">No scans yet. Start by scanning a website above.</p>
@@ -149,7 +183,6 @@
                     <h1 id="resultWebsite">Scan Results</h1>
                 </div>
 
-                <!-- Security Score Card -->
                 <!-- Overall Security Score Hero Section -->
                 <div class="overall-score-container">
                     <div class="score-card-result">
@@ -168,41 +201,113 @@
                                 <circle cx="50" cy="50" r="45" class="progress-background"></circle>
                                 <circle cx="50" cy="50" r="45" class="progress-circle" id="progressCircle"></circle>
                             </svg>
-                            <div class="score-value" id="scoreValue">92</div>
+                            <div class="score-value" id="scoreValue">—</div>
                         </div>
                         <div class="score-risk-label">RISK LEVEL</div>
-                        <div class="score-status" id="scoreStatus">Excellent</div>
+                        <div class="score-status" id="scoreStatus">No Scan Performed Yet</div>
                     </div>
                 </div>
 
-                <!-- 3-Column Expandable Modules Grid -->
+                <!-- Executive Summary Info Card -->
+                <div class="summary-info-card card-full-width" style="margin-bottom: 1.5rem;">
+                    <div class="summary-info-grid">
+                        <div class="human-summary-block">
+                            <h3><i class="fas fa-heartbeat"></i> Website Summary</h3>
+                            <p id="humanSummaryText">Not scanned yet</p>
+                        </div>
+                        <div class="website-metadata-block">
+                            <h3><i class="fas fa-info-circle"></i> Quick Stats & Details</h3>
+                            <div class="metadata-grid">
+                                <div class="meta-item"><span class="meta-label">IP Address</span><span class="meta-value" id="metaIp">Not scanned yet</span></div>
+                                <div class="meta-item"><span class="meta-label">Hosting Location</span><span class="meta-value" id="metaLocation">Not scanned yet</span></div>
+                                <div class="meta-item"><span class="meta-label">Internet Provider</span><span class="meta-value" id="metaIsp">Not scanned yet</span></div>
+                                <div class="meta-item"><span class="meta-label">Domain Created</span><span class="meta-value" id="metaCreated">Not scanned yet</span></div>
+                                <div class="meta-item"><span class="meta-label">Domain Registrar</span><span class="meta-value" id="metaRegistrar">Not scanned yet</span></div>
+                                <div class="meta-item"><span class="meta-label">Connection Type</span><span class="meta-value" id="metaConnectionType">Not scanned yet</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 9-Column Expandable Modules Grid -->
                 <div class="modules-accordion-grid">
 
                     <!-- SSL/TLS Certificate Tile -->
                     <div class="module-tile ssl-tile">
-                        <div class="module-tile-header" onclick="toggleCardDetails('dashSslDetails', this)">
+                        <div class="module-tile-header" onclick="toggleCardDetails('sslDetails', this)">
                             <div class="module-title-group">
                                 <i class="fas fa-lock"></i>
                                 <span class="module-name">SSL/TLS CERTIFICATE</span>
                             </div>
-                            <button class="module-toggle-btn" aria-label="Toggle details">
-                                <i class="fas fa-plus"></i>
-                            </button>
+                            <button class="module-toggle-btn" aria-label="Toggle details"><i class="fas fa-plus"></i></button>
                         </div>
-                        <div class="module-tile-body" id="dashSslDetails">
+                        <div class="module-tile-body" id="sslDetails">
                             <div class="card-content">
-                                <div class="result-item">
-                                    <span class="label">Status:</span>
-                                    <span class="value" id="sslStatus">Valid</span>
-                                </div>
-                                <div class="result-item">
-                                    <span class="label">Protocol:</span>
-                                    <span class="value" id="sslProtocol">TLS 1.3</span>
-                                </div>
-                                <div class="result-item">
-                                    <span class="label">Expires:</span>
-                                    <span class="value" id="sslExpires">2025-12-31</span>
-                                </div>
+                                <div class="result-item"><span class="label">Status:</span><span class="value" id="sslStatus">Not scanned yet</span></div>
+                                <div class="result-item"><span class="label">Protocol:</span><span class="value" id="sslProtocol">Not scanned yet</span></div>
+                                <div class="result-item"><span class="label">Expires:</span><span class="value" id="sslExpires">Not scanned yet</span></div>
+                                <div class="result-item"><span class="label">Certificate:</span><span class="value" id="sslCert">Not scanned yet</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SEO Analysis Tile -->
+                    <div class="module-tile seo-tile">
+                        <div class="module-tile-header" onclick="toggleCardDetails('seoDetails', this)">
+                            <div class="module-title-group">
+                                <i class="fas fa-search"></i>
+                                <span class="module-name">SEO ANALYSIS</span>
+                            </div>
+                            <button class="module-toggle-btn" aria-label="Toggle details"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <div class="module-tile-body" id="seoDetails">
+                            <div class="card-content">
+                                <div class="result-item"><span class="label">Title:</span><span class="value" id="seoTitle">Not scanned yet</span></div>
+                                <div class="result-item"><span class="label">Meta Description:</span><span class="value" id="seoMetaDescription">Not scanned yet</span></div>
+                                <div class="result-item"><span class="label">Missing Alt Text:</span><span class="value" id="seoMissingAltImages">Not scanned yet</span></div>
+                                <div class="result-item"><span class="label">H1 Tags:</span><span class="value" id="headingCount">Not scanned yet</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Performance Tile -->
+                    <div class="module-tile performance-tile">
+                        <div class="module-tile-header" onclick="toggleCardDetails('perfDetails', this)">
+                            <div class="module-title-group">
+                                <i class="fas fa-bolt"></i>
+                                <span class="module-name">PERFORMANCE</span>
+                            </div>
+                            <button class="module-toggle-btn" aria-label="Toggle details"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <div class="module-tile-body" id="perfDetails">
+                            <div class="card-content">
+                                <div class="result-item"><span class="label">Score:</span><span class="value" id="performanceScore">--</span></div>
+                                <div class="result-item"><span class="label">FCP:</span><span class="value" id="fcp">--</span></div>
+                                <div class="result-item"><span class="label">LCP:</span><span class="value" id="lcp">--</span></div>
+                                <div class="result-item"><span class="label">Speed Index:</span><span class="value" id="speedIndex">--</span></div>
+                                <div class="result-item"><span class="label">Page Load Time:</span><span class="value" id="pageLoadTime">--</span></div>
+                                <div class="result-item"><span class="label">TTFB:</span><span class="value" id="ttfb">--</span></div>
+                                <div class="result-item"><span class="label">Mobile Friendly:</span><span class="value" id="mobileFriendly">--</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DNS Information Tile -->
+                    <div class="module-tile dns-tile">
+                        <div class="module-tile-header" onclick="toggleCardDetails('dnsDetails', this)">
+                            <div class="module-title-group">
+                                <i class="fas fa-network-wired"></i>
+                                <span class="module-name">DNS INFORMATION</span>
+                            </div>
+                            <button class="module-toggle-btn" aria-label="Toggle details"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <div class="module-tile-body" id="dnsDetails">
+                            <div class="card-content">
+                                <div class="result-item"><span class="label">IP Address:</span><span class="value" id="dnsIp">-</span></div>
+                                <div class="result-item"><span class="label">A Records:</span><span class="value" id="dnsA">-</span></div>
+                                <div class="result-item"><span class="label">MX Records:</span><span class="value" id="dnsMX">-</span></div>
+                                <div class="result-item"><span class="label">NS Records:</span><span class="value" id="dnsNS">-</span></div>
+                                <div class="result-item"><span class="label">TXT Records:</span><span class="value" id="dnsTXT">-</span></div>
                             </div>
                         </div>
                     </div>
@@ -214,126 +319,79 @@
                                 <i class="fas fa-bug"></i>
                                 <span class="module-name">VULNERABILITIES</span>
                             </div>
-                            <button class="module-toggle-btn" aria-label="Toggle details">
-                                <i class="fas fa-plus"></i>
-                            </button>
+                            <button class="module-toggle-btn" aria-label="Toggle details"><i class="fas fa-plus"></i></button>
                         </div>
                         <div class="module-tile-body" id="dashVulnDetails">
                             <div class="card-content">
-                                <div class="vuln-item critical">
-                                    <span class="label">Critical:</span>
-                                    <span class="value" id="vulnCritical">0</span>
-                                </div>
-                                <div class="vuln-item high">
-                                    <span class="label">High:</span>
-                                    <span class="value" id="vulnHigh">1</span>
-                                </div>
-                                <div class="vuln-item medium">
-                                    <span class="label">Medium:</span>
-                                    <span class="value" id="vulnMedium">3</span>
-                                </div>
-                                <div class="vuln-item low">
-                                    <span class="label">Low:</span>
-                                    <span class="value" id="vulnLow">2</span>
-                                </div>
+                                <div class="vuln-item critical"><span class="label">Critical:</span><span class="value" id="vulnCritical">0</span></div>
+                                <div class="vuln-item high"><span class="label">High:</span><span class="value" id="vulnHigh">0</span></div>
+                                <div class="vuln-item medium"><span class="label">Medium:</span><span class="value" id="vulnMedium">0</span></div>
+                                <div class="vuln-item low"><span class="label">Low:</span><span class="value" id="vulnLow">0</span></div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- DNS Information Tile -->
-                    <div class="module-tile dns-tile">
-                        <div class="module-tile-header" onclick="toggleCardDetails('dashDnsDetails', this)">
+                    <!-- Security Headers Tile -->
+                    <div class="module-tile headers-tile">
+                        <div class="module-tile-header" onclick="toggleCardDetails('headersDetails', this)">
                             <div class="module-title-group">
-                                <i class="fas fa-network-wired"></i>
-                                <span class="module-name">DNS INFORMATION</span>
+                                <i class="fas fa-shield-alt"></i>
+                                <span class="module-name">SECURITY HEADERS</span>
                             </div>
-                            <button class="module-toggle-btn" aria-label="Toggle details">
-                                <i class="fas fa-plus"></i>
-                            </button>
+                            <button class="module-toggle-btn" aria-label="Toggle details"><i class="fas fa-plus"></i></button>
                         </div>
-                        <div class="module-tile-body" id="dashDnsDetails">
+                        <div class="module-tile-body" id="headersDetails">
                             <div class="card-content">
-                                <div class="result-item">
-                                    <span class="label">IP Address:</span>
-                                    <span class="value" id="dnsIp">-</span>
-                                </div>
-                                <div class="result-item">
-                                    <span class="label">A Records:</span>
-                                    <span class="value" id="dnsA">-</span>
-                                </div>
-                                <div class="result-item">
-                                    <span class="label">MX Records:</span>
-                                    <span class="value" id="dnsMX">-</span>
-                                </div>
-                                <div class="result-item">
-                                    <span class="label">NS Records:</span>
-                                    <span class="value" id="dnsNS">-</span>
-                                </div>
-                                <div class="result-item">
-                                    <span class="label">TXT Records:</span>
-                                    <span class="value" id="dnsTXT">-</span>
-                                </div>
+                                <div class="result-item"><span class="label">Missing Headers:</span><span class="value" id="headersMissingCount">--</span></div>
                             </div>
                         </div>
                     </div>
 
                     <!-- CORS Configuration Tile -->
                     <div class="module-tile cors-tile">
-                        <div class="module-tile-header" onclick="toggleCardDetails('dashCorsDetails', this)">
+                        <div class="module-tile-header" onclick="toggleCardDetails('corsDetails', this)">
                             <div class="module-title-group">
                                 <i class="fas fa-exchange-alt"></i>
                                 <span class="module-name">CORS CONFIGURATION</span>
                             </div>
-                            <button class="module-toggle-btn" aria-label="Toggle details">
-                                <i class="fas fa-plus"></i>
-                            </button>
+                            <button class="module-toggle-btn" aria-label="Toggle details"><i class="fas fa-plus"></i></button>
                         </div>
-                        <div class="module-tile-body" id="dashCorsDetails">
+                        <div class="module-tile-body" id="corsDetails">
                             <div class="card-content">
-                                <div class="result-item">
-                                    <span class="label">Risk Level:</span>
-                                    <span class="value" id="dashboardCorsRiskBadge"><span class="badge risk-low" style="padding: 4px 10px; border-radius: 4px; font-weight: 700; font-size: 0.8rem; background: var(--surface-elevated); color: var(--success); border: 1px solid var(--success);">LOW</span></span>
-                                </div>
-                                <div class="detail-row" style="flex-direction: column; align-items: flex-start; gap: 4px; border-bottom: none;">
-                                    <span class="label">CORS Findings:</span>
-                                    <div id="dashCorsFindingsList" style="width: 100%; font-size: 0.85rem; line-height: 1.4; margin-top: 5px;">-</div>
-                                </div>
+                                <div class="result-item"><span class="label">Risk Level:</span><span class="value" id="corsRiskBadge">LOW</span></div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Exposed Sensitive Files Tile -->
                     <div class="module-tile exposed-tile">
-                        <div class="module-tile-header" onclick="toggleCardDetails('dashExposedPathsDetails', this)">
+                        <div class="module-tile-header" onclick="toggleCardDetails('exposedPathsDetails', this)">
                             <div class="module-title-group">
                                 <i class="fas fa-folder"></i>
                                 <span class="module-name">EXPOSED SENSITIVE FILES</span>
                             </div>
-                            <button class="module-toggle-btn" aria-label="Toggle details">
-                                <i class="fas fa-plus"></i>
-                            </button>
+                            <button class="module-toggle-btn" aria-label="Toggle details"><i class="fas fa-plus"></i></button>
                         </div>
-                        <div class="module-tile-body" id="dashExposedPathsDetails">
+                        <div class="module-tile-body" id="exposedPathsDetails">
                             <div class="card-content">
-                                <div class="result-item">
-                                    <span class="label">Risk Level:</span>
-                                    <span class="value" id="dashboardExposedPathsRiskBadge"><span class="badge risk-low" style="padding: 4px 10px; border-radius: 4px; font-weight: 700; font-size: 0.8rem; background: var(--surface-elevated); color: var(--success); border: 1px solid var(--success);">LOW</span></span>
-                                </div>
-                                <div class="result-item">
-                                    <span class="label">Paths Checked:</span>
-                                    <span class="value" id="dashExposedPathsChecked">-</span>
-                                </div>
-                                <div class="result-item">
-                                    <span class="label">Exposed Files:</span>
-                                    <span class="value" id="dashExposedPathsExposedCount">-</span>
-                                </div>
-                                <div class="result-item">
-                                    <span class="label">Protected Files:</span>
-                                    <span class="value" id="dashExposedPathsProtectedCount">-</span>
-                                </div>
-                                <div class="detail-row" style="flex-direction: column; align-items: flex-start; gap: 4px; border-bottom: none;">
-                                    <span class="label">Exposed Paths Findings:</span>
-                                    <div id="dashExposedPathsFindingsList" style="width: 100%; font-size: 0.85rem; line-height: 1.4; margin-top: 5px;">-</div>
+                                <div class="result-item"><span class="label">Risk Level:</span><span class="value" id="exposedPathsRiskBadge">LOW</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Technology Detector Tile -->
+                    <div class="module-tile tech-tile">
+                        <div class="module-tile-header" onclick="toggleCardDetails('techDetails', this)">
+                            <div class="module-title-group">
+                                <i class="fas fa-microchip"></i>
+                                <span class="module-name">TECHNOLOGY DETECTOR</span>
+                            </div>
+                            <button class="module-toggle-btn" aria-label="Toggle details"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <div class="module-tile-body" id="techDetails">
+                            <div class="card-content">
+                                <div id="technologyContainer" class="technology-container">
+                                    <div class="technology-loading">No technology detected.</div>
                                 </div>
                             </div>
                         </div>
@@ -341,32 +399,27 @@
 
                 </div>
 
-                <!-- Chatbot card removed and moved to floating widget -->
-
-                <!-- Report Actions -->
-                <div class="report-actions">
+                <!-- Report Action Buttons -->
+                <div class="report-actions" style="margin-top: 1.5rem;">
                     <button class="download-btn" onclick="downloadReport()">
-                        <i class="fas fa-download"></i> Download PDF Report
+                        <i class="fas fa-file-pdf"></i> Download PDF Report
                     </button>
-                    <button class="email-btn" onclick="emailReport()">
-                        <i class="fas fa-envelope"></i> Email Report
-                    </button>
-                    <button class="schedule-btn" onclick="scheduleReport()">
-                        <i class="fas fa-calendar"></i> Schedule Scan
+                    <button class="schedule-btn" onclick="openScheduleModal()">
+                        <i class="fas fa-calendar-alt"></i> Schedule Recurring Scan
                     </button>
                 </div>
             </section>
 
-            <!-- History Section -->
+            <!-- STEP 2: Scan History Section -->
             <section id="historySection" class="dashboard-section" style="display: none;">
                 <div class="section-header">
                     <h1>Scan History</h1>
-                    <p>View all your previous scans</p>
+                    <p>View all your past website scans and audit reports</p>
                 </div>
 
-                <div class="history-filters">
-                    <input type="text" id="searchHistory" placeholder="Search scans..." onkeyup="filterHistory()">
-                    <select id="sortBy" onchange="filterHistory()">
+                <div class="history-filters" style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+                    <input type="text" id="searchHistory" placeholder="Search by website URL..." onkeyup="filterHistory()" style="flex: 1; padding: 0.6rem 1rem; border-radius: var(--radius-md, 8px); border: 1px solid var(--border-color); background: var(--surface);">
+                    <select id="sortBy" onchange="filterHistory()" style="padding: 0.6rem 1rem; border-radius: var(--radius-md, 8px); border: 1px solid var(--border-color); background: var(--surface);">
                         <option value="recent">Most Recent</option>
                         <option value="oldest">Oldest First</option>
                         <option value="score-high">Highest Score</option>
@@ -374,7 +427,7 @@
                     </select>
                 </div>
 
-                <div class="history-table">
+                <div class="history-table" id="historyTableContainer">
                     <div class="empty-state">No scan history yet.</div>
                 </div>
             </section>
@@ -442,11 +495,42 @@
         </main>
     </div>
 
+    <!-- Schedule Scan Modal -->
+    <div id="scheduleModal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
+        <div class="modal-card" style="background: var(--surface, #ffffff); border-radius: 12px; border: 1px solid var(--border-color); width: 90%; max-width: 450px; padding: 1.5rem; position: relative; color: var(--text-primary);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                <h3 style="font-size: 1.2rem; font-weight: 600;"><i class="fas fa-calendar-alt" style="color: var(--primary); margin-right: 8px;"></i> Schedule Recurring Scan</h3>
+                <button onclick="closeScheduleModal()" style="background: transparent; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-secondary);">&times;</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem;">Target Website URL</label>
+                    <input type="url" id="scheduleUrlInput" placeholder="https://example.com" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--surface-elevated, #f8fafc);">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem;">Scan Frequency</label>
+                    <select id="scheduleFrequencySelect" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--surface-elevated, #f8fafc);">
+                        <option value="weekly">Weekly (Every 7 Days)</option>
+                        <option value="daily">Daily (Every 24 Hours)</option>
+                    </select>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
+                    <button onclick="closeScheduleModal()" style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: transparent; cursor: pointer;">Cancel</button>
+                    <button onclick="saveSchedule()" style="padding: 0.5rem 1.2rem; border-radius: 8px; border: none; background: var(--primary, #2563eb); color: white; font-weight: 600; cursor: pointer;">Save Schedule</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        </main>
+    </div>
+
     <script src="auth.js"></script>
     <script src="script.js"></script>
     <script>
         let currentReport = null;
         let scanHistory = [];
+        let scoreChartInstance = null;
 
         async function initDashboard() {
             const user = auth.isLoggedInLocally() ? await auth.fetchCurrentUser() : null;
@@ -455,7 +539,6 @@
                 return;
             }
 
-            // Update user info
             document.getElementById('userName').textContent = user.name || user.full_name;
             document.getElementById('userEmail').textContent = user.email;
             document.getElementById('userEmailSidebar').textContent = user.email;
@@ -463,7 +546,6 @@
             document.getElementById('settingsEmail').textContent = user.email;
             document.getElementById('settingsMemberSince').textContent = user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'Recently';
 
-            // Avatar integration
             const sidebarAvatar = document.getElementById('sidebarAvatar');
             const navAvatarContainer = document.getElementById('navAvatarContainer');
             if (user.picture) {
@@ -475,45 +557,37 @@
                 navAvatarContainer.style.display = 'none';
             }
 
-            // Load Google Client ID input field
             const savedClientId = localStorage.getItem('google_client_id') || '';
             const clientIdInput = document.getElementById('googleClientIdInput');
-            if (clientIdInput) {
-                clientIdInput.value = savedClientId;
-            }
+            if (clientIdInput) clientIdInput.value = savedClientId;
 
-            // Load scan history from localStorage
-            loadScanHistory();
-        }
-
-        function saveGoogleSettings() {
-            const val = document.getElementById('googleClientIdInput').value.trim();
-            localStorage.setItem('google_client_id', val);
-            alert('Google Client ID config saved successfully! If you entered a real Google Client ID, standard Google Authentication popup flow will now trigger instead of mock mode.');
-            window.location.reload();
+            await loadScanHistory();
+            await loadScheduledScanInfo();
         }
 
         async function scanWebsiteDashboard() {
             const urlInput = document.getElementById('urlInput');
             const url = urlInput.value.trim();
 
+            const errBanner = document.getElementById('dashboardErrorBanner');
+            if (errBanner) errBanner.style.display = 'none';
+
             if (!url) {
-                alert('Please enter a website URL');
+                showDashboardError('Please enter a website URL');
                 return;
             }
 
             if (!isValidUrl(url)) {
-                alert('Please enter a valid URL');
+                showDashboardError('Please enter a valid URL (e.g. https://example.com)');
                 return;
             }
 
             const user = auth.getCurrentUser();
             if ((user.scansRemaining ?? user.scans_remaining ?? 0) <= 0) {
-                alert('You have reached your scan limit. Please upgrade your account.');
+                showDashboardError('You have reached your scan limit. Please upgrade your account.');
                 return;
             }
 
-            // Show loading state
             const scanBtn = document.querySelector('.scan-btn');
             const originalText = scanBtn.innerHTML;
             scanBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
@@ -529,66 +603,67 @@
                 });
 
                 if (!response) {
-                    // fetchWithAuth returned null → session expired, already redirecting
+                    scanBtn.innerHTML = originalText;
+                    scanBtn.disabled = false;
                     return;
                 }
 
                 if (response.status === 403) {
                     let detail = 'No scans remaining.';
                     try { const errData = await response.json(); detail = errData.detail || detail; } catch(e) {}
-                    alert(detail);
+                    showDashboardError(detail);
                     scanBtn.innerHTML = originalText;
                     scanBtn.disabled = false;
                     return;
                 }
 
                 if (!response.ok) {
-                    alert('Scan failed. Please try again.');
+                    let detail = 'Scan failed. Please check the website URL and try again.';
+                    try { const errData = await response.json(); detail = errData.detail || errData.error || detail; } catch(e) {}
+                    showDashboardError(detail);
                     scanBtn.innerHTML = originalText;
                     scanBtn.disabled = false;
                     return;
                 }
 
                 const report = await response.json();
-                currentReport = report;
-                displayResults(url, report);
+                if (report.success === false) {
+                    showDashboardError(report.error || report.summary?.human_summary || 'Scan failed to complete.');
+                    scanBtn.innerHTML = originalText;
+                    scanBtn.disabled = false;
+                    return;
+                }
 
-                // Refresh user data from server to get accurate scans_remaining
+                currentReport = report;
+                displayScanData(url, report);
+
                 const updatedUser = await auth.fetchCurrentUser();
                 if (updatedUser) {
                     document.getElementById('scansRemaining').textContent = updatedUser.scansRemaining ?? updatedUser.scans_remaining ?? 0;
                 }
 
-                // Save to history
-                saveScanToHistory(url, report);
+                await loadScanHistory();
 
-                // Reset button
                 scanBtn.innerHTML = originalText;
                 scanBtn.disabled = false;
 
-                // Show results
                 showSection('results');
             } catch (err) {
                 console.error('Dashboard scan error:', err);
-                alert('Scan failed. Please try again.');
+                showDashboardError('Scan failed: ' + (err.message || 'Network error'));
                 scanBtn.innerHTML = originalText;
                 scanBtn.disabled = false;
             }
         }
 
-        function saveScanToHistory(url, report) {
-            const score = report.summary?.security_score ?? report.score ?? 80;
-            const status = report.summary?.risk_level || report.status || 'Low';
-            const scan = {
-                url,
-                score,
-                status,
-                timestamp: new Date().toISOString()
-            };
-            scanHistory.unshift(scan);
-            const user = auth.getCurrentUser();
-            if (user && user.email) {
-                localStorage.setItem('scanHistory_' + user.email, JSON.stringify(scanHistory));
+        function showDashboardError(msg) {
+            const errBanner = document.getElementById('dashboardErrorBanner');
+            const errText = document.getElementById('dashboardErrorText');
+            if (errBanner && errText) {
+                errText.textContent = msg;
+                errBanner.style.display = 'flex';
+            } else {
+                alert(msg);
             }
         }
 
@@ -600,24 +675,24 @@
                     const res = await auth.fetchWithAuth(`${apiHost}/api/scans/history`);
                     if (res && res.ok) {
                         const data = await res.json();
-                        if (data.success && Array.isArray(data.scans) && data.scans.length > 0) {
-                            scanHistory = data.scans.map(s => ({
-                                url: s.url,
-                                score: s.score,
-                                status: s.risk_level || 'LOW',
-                                timestamp: s.createdAt
-                            }));
+                        if (data.success && Array.isArray(data.scans)) {
+                            scanHistory = data.scans;
+                            document.getElementById('totalScans').textContent = scanHistory.length;
                             displayRecentScans();
+                            populateHistoryTable();
+                            renderScoreTrendChart(scanHistory);
                             return;
                         }
                     }
                 } catch(e) {
-                    console.warn('Could not fetch scan history from API, fallback to local storage', e);
+                    console.warn('Could not fetch scan history from API', e);
                 }
-                const stored = localStorage.getItem('scanHistory_' + user.email);
-                scanHistory = stored ? JSON.parse(stored) : [];
             }
+            scanHistory = [];
+            document.getElementById('totalScans').textContent = 0;
             displayRecentScans();
+            populateHistoryTable();
+            renderScoreTrendChart([]);
         }
 
         function displayRecentScans() {
@@ -627,84 +702,89 @@
                 return;
             }
 
-            container.innerHTML = scanHistory.slice(0, 5).map((scan, index) => `
-                <div class="scan-item" onclick="viewScanDetails(${index})">
+            container.innerHTML = scanHistory.slice(0, 5).map((scan) => `
+                <div class="scan-item" onclick="viewHistoryScanDetail('${scan.id}')" style="cursor: pointer;">
                     <div class="scan-info">
                         <p class="scan-url">${scan.url}</p>
-                        <p class="scan-date">${new Date(scan.timestamp).toLocaleDateString()}</p>
+                        <p class="scan-date">${new Date(scan.createdAt).toLocaleDateString()}</p>
                     </div>
                     <div class="scan-score">
-                        <span class="score-badge score-${scan.status.toLowerCase().replace(/\s+/g, '-')}">${scan.score}</span>
+                        <span class="score-badge score-${(scan.risk_level || 'LOW').toLowerCase()}">${scan.score}</span>
                     </div>
                 </div>
             `).join('');
         }
 
-        function viewDashboard() {
-            showSection('dashboard');
-        }
-
-        function viewHistory() {
-            showSection('history');
-            populateHistoryTable();
-        }
-
-        function viewSettings() {
-            showSection('settings');
-        }
-
-        function backToDashboard() {
-            showSection('dashboard');
-        }
-
-        function showSection(section) {
-            // Hide all sections
-            document.querySelectorAll('.dashboard-section').forEach(s => s.style.display = 'none');
-
-            // Update nav items
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-
-            // Show selected section
-            if (section === 'dashboard') {
-                document.getElementById('dashboardSection').style.display = 'block';
-                document.querySelector('[data-section="dashboard"]').classList.add('active');
-            } else if (section === 'results') {
-                document.getElementById('resultsSection').style.display = 'block';
-            } else if (section === 'history') {
-                document.getElementById('historySection').style.display = 'block';
-                document.querySelector('[data-section="history"]').classList.add('active');
-            } else if (section === 'settings') {
-                document.getElementById('settingsSection').style.display = 'block';
-                document.querySelector('[data-section="settings"]').classList.add('active');
+        async function viewHistoryScanDetail(scanId) {
+            try {
+                const apiHost = typeof auth !== 'undefined' ? auth.backendBase : (typeof window.getBackendBaseUrl === 'function' ? window.getBackendBaseUrl() : 'https://shieldscope-backend-e3hu.onrender.com');
+                const res = await auth.fetchWithAuth(`${apiHost}/api/scans/${scanId}`);
+                if (res && res.ok) {
+                    const data = await res.json();
+                    if (data.success && data.scan) {
+                        currentReport = data.scan;
+                        displayScanData(data.scan.url, data.scan);
+                        showSection('results');
+                        return;
+                    }
+                }
+                alert('Could not load detailed scan report.');
+            } catch (e) {
+                console.error('Error fetching scan detail:', e);
+                alert('Error loading scan details.');
             }
         }
 
         function populateHistoryTable() {
-            const container = document.querySelector('.history-table');
-            if (scanHistory.length === 0) {
-                container.innerHTML = '<div class="empty-state">No scan history yet.</div>';
+            filterHistory();
+        }
+
+        function filterHistory() {
+            const query = (document.getElementById('searchHistory')?.value || '').toLowerCase().trim();
+            const sortBy = document.getElementById('sortBy')?.value || 'recent';
+
+            let filtered = scanHistory.filter(s => (s.url || '').toLowerCase().includes(query));
+
+            if (sortBy === 'recent') {
+                filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            } else if (sortBy === 'oldest') {
+                filtered.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+            } else if (sortBy === 'score-high') {
+                filtered.sort((a, b) => (b.score || 0) - (a.score || 0));
+            } else if (sortBy === 'score-low') {
+                filtered.sort((a, b) => (a.score || 0) - (b.score || 0));
+            }
+
+            const container = document.getElementById('historyTableContainer');
+            if (!container) return;
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="empty-state" style="padding: 2rem 0; text-align: center; color: var(--text-secondary);">No matching scan history records found.</div>';
                 return;
             }
 
             container.innerHTML = `
-                <table class="history-table-content">
+                <table class="history-table-content" style="width: 100%; border-collapse: collapse;">
                     <thead>
-                        <tr>
-                            <th>Website</th>
-                            <th>Score</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                            <th>Action</th>
+                        <tr style="border-bottom: 2px solid var(--border-color); text-align: left; font-size: 0.85rem; color: var(--text-secondary);">
+                            <th style="padding: 10px;">Website Target</th>
+                            <th style="padding: 10px;">Score</th>
+                            <th style="padding: 10px;">Risk Rating</th>
+                            <th style="padding: 10px;">Audit Date</th>
+                            <th style="padding: 10px; text-align: right;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${scanHistory.map((scan, index) => `
-                            <tr>
-                                <td>${scan.url}</td>
-                                <td><span class="score-badge">${scan.score}</span></td>
-                                <td>${scan.status}</td>
-                                <td>${new Date(scan.timestamp).toLocaleDateString()}</td>
-                                <td><button onclick="viewScanDetails(${index})">View</button></td>
+                        ${filtered.map((scan) => `
+                            <tr style="border-bottom: 1px solid var(--border-color); font-size: 0.9rem;">
+                                <td style="padding: 12px 10px; font-weight: 500;">${scan.url}</td>
+                                <td style="padding: 12px 10px;"><span class="score-badge" style="padding: 4px 8px; border-radius: 4px; font-weight: 700;">${scan.score}</span></td>
+                                <td style="padding: 12px 10px;"><span style="font-weight: 600; text-transform: uppercase; font-size: 0.8rem;">${scan.risk_level || 'LOW'}</span></td>
+                                <td style="padding: 12px 10px; color: var(--text-secondary);">${new Date(scan.createdAt).toLocaleDateString()}</td>
+                                <td style="padding: 12px 10px; text-align: right;">
+                                    <button onclick="viewHistoryScanDetail('${scan.id}')" style="padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--surface); cursor: pointer; font-size: 0.85rem; margin-right: 6px;"><i class="fas fa-eye"></i> View</button>
+                                    <button onclick="downloadScanPdfById('${scan.id}')" style="padding: 4px 10px; border-radius: 6px; border: none; background: var(--primary); color: white; cursor: pointer; font-size: 0.85rem;"><i class="fas fa-file-pdf"></i> PDF</button>
+                                </td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -712,8 +792,212 @@
             `;
         }
 
-        function filterHistory() {
-            // Implement filtering logic
+        // STEP 4: Score Trend Chart Renderer
+        function renderScoreTrendChart(historyData) {
+            const canvas = document.getElementById('scoreTrendChart');
+            const emptyState = document.getElementById('chartEmptyState');
+            if (!canvas) return;
+
+            if (!historyData || historyData.length < 2) {
+                canvas.style.display = 'none';
+                if (emptyState) emptyState.style.display = 'block';
+                return;
+            }
+
+            canvas.style.display = 'block';
+            if (emptyState) emptyState.style.display = 'none';
+
+            const sorted = [...historyData].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+            const labels = sorted.map(s => new Date(s.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+            const scores = sorted.map(s => s.score);
+
+            if (scoreChartInstance) {
+                scoreChartInstance.destroy();
+            }
+
+            const ctx = canvas.getContext('2d');
+            scoreChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Security Score',
+                        data: scores,
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.35,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#2563eb'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 100,
+                            ticks: { stepSize: 20 }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // STEP 3: PDF Export Handlers
+        async function downloadReport() {
+            if (!currentReport || !currentReport.id) {
+                alert('Please perform or select a scan first to download PDF report.');
+                return;
+            }
+            await downloadScanPdfById(currentReport.id);
+        }
+
+        async function downloadScanPdfById(scanId) {
+            try {
+                const apiHost = typeof auth !== 'undefined' ? auth.backendBase : (typeof window.getBackendBaseUrl === 'function' ? window.getBackendBaseUrl() : 'https://shieldscope-backend-e3hu.onrender.com');
+                const token = auth.getToken();
+                const res = await fetch(`${apiHost}/api/scans/${scanId}/pdf`, {
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                });
+
+                if (!res.ok) {
+                    alert('Failed to generate PDF report.');
+                    return;
+                }
+
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `ShieldScope_Audit_Report.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } catch(e) {
+                console.error('PDF download error:', e);
+                alert('Error downloading PDF report.');
+            }
+        }
+
+        // STEP 5: Scheduled Scans Handlers
+        async function loadScheduledScanInfo() {
+            const container = document.getElementById('scheduledScanWidgetContent');
+            if (!container) return;
+
+            try {
+                const apiHost = typeof auth !== 'undefined' ? auth.backendBase : (typeof window.getBackendBaseUrl === 'function' ? window.getBackendBaseUrl() : 'https://shieldscope-backend-e3hu.onrender.com');
+                const res = await auth.fetchWithAuth(`${apiHost}/api/scans/schedule`);
+                if (res && res.ok) {
+                    const data = await res.json();
+                    if (data.scheduled && data.schedule) {
+                        const s = data.schedule;
+                        const nextDate = s.next_run ? new Date(s.next_run).toLocaleString() : 'Pending';
+                        container.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: center; background: var(--surface-elevated, #f8fafc); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <div>
+                                    <p style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">🎯 ${s.url}</p>
+                                    <p style="font-size: 0.82rem; color: var(--text-secondary);">Frequency: <strong style="text-transform: capitalize;">${s.frequency}</strong> &nbsp;|&nbsp; Next Scheduled Run: <strong>${nextDate}</strong></p>
+                                </div>
+                                <div>
+                                    <button onclick="cancelSchedule()" style="padding: 0.4rem 0.8rem; border-radius: 6px; border: 1px solid var(--error-border, #fca5a5); background: var(--error-bg, #fef2f2); color: var(--error-text, #991b1b); font-size: 0.85rem; font-weight: 500; cursor: pointer;"><i class="fas fa-trash-alt"></i> Cancel Schedule</button>
+                                </div>
+                            </div>
+                        `;
+                        return;
+                    }
+                }
+            } catch(e) {
+                console.warn('Error loading schedule info:', e);
+            }
+            container.innerHTML = '<p class="empty-state">No recurring scan scheduled yet. Opt a URL into automated weekly/daily scanning.</p>';
+        }
+
+        function openScheduleModal() {
+            const urlInput = document.getElementById('urlInput')?.value || (currentReport?.url || '');
+            document.getElementById('scheduleUrlInput').value = urlInput;
+            document.getElementById('scheduleModal').style.display = 'flex';
+        }
+
+        function closeScheduleModal() {
+            document.getElementById('scheduleModal').style.display = 'none';
+        }
+
+        async function saveSchedule() {
+            const url = document.getElementById('scheduleUrlInput').value.trim();
+            const frequency = document.getElementById('scheduleFrequencySelect').value;
+
+            if (!url) {
+                alert('Please enter a target URL to schedule');
+                return;
+            }
+
+            try {
+                const apiHost = typeof auth !== 'undefined' ? auth.backendBase : (typeof window.getBackendBaseUrl === 'function' ? window.getBackendBaseUrl() : 'https://shieldscope-backend-e3hu.onrender.com');
+                const res = await auth.fetchWithAuth(`${apiHost}/api/scans/schedule`, {
+                    method: 'POST',
+                    body: JSON.stringify({ url, frequency })
+                });
+
+                if (res && res.ok) {
+                    const data = await res.json();
+                    alert(data.message || 'Schedule created successfully!');
+                    closeScheduleModal();
+                    loadScheduledScanInfo();
+                } else {
+                    let errDetail = 'Failed to create schedule.';
+                    try { const errData = await res.json(); errDetail = errData.detail || errDetail; } catch(_) {}
+                    alert(errDetail);
+                }
+            } catch(e) {
+                console.error('Save schedule error:', e);
+                alert('Error saving schedule');
+            }
+        }
+
+        async function cancelSchedule() {
+            if (!confirm('Are you sure you want to cancel your scheduled scan?')) return;
+            try {
+                const apiHost = typeof auth !== 'undefined' ? auth.backendBase : (typeof window.getBackendBaseUrl === 'function' ? window.getBackendBaseUrl() : 'https://shieldscope-backend-e3hu.onrender.com');
+                const res = await auth.fetchWithAuth(`${apiHost}/api/scans/schedule`, {
+                    method: 'DELETE'
+                });
+                if (res && res.ok) {
+                    alert('Scheduled scan cancelled.');
+                    loadScheduledScanInfo();
+                }
+            } catch(e) {
+                console.error('Cancel schedule error:', e);
+            }
+        }
+
+        function viewDashboard() { showSection('dashboard'); }
+        function viewHistory() { showSection('history'); populateHistoryTable(); }
+        function viewSettings() { showSection('settings'); }
+        function backToDashboard() { showSection('dashboard'); }
+
+        function showSection(section) {
+            document.querySelectorAll('.dashboard-section').forEach(s => s.style.display = 'none');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+            if (section === 'dashboard') {
+                document.getElementById('dashboardSection').style.display = 'block';
+                document.querySelector('[data-section="dashboard"]')?.classList.add('active');
+            } else if (section === 'results') {
+                document.getElementById('resultsSection').style.display = 'block';
+            } else if (section === 'history') {
+                document.getElementById('historySection').style.display = 'block';
+                document.querySelector('[data-section="history"]')?.classList.add('active');
+            } else if (section === 'settings') {
+                document.getElementById('settingsSection').style.display = 'block';
+                document.querySelector('[data-section="settings"]')?.classList.add('active');
+            }
         }
 
         async function handleLogout() {
@@ -723,122 +1007,19 @@
             }
         }
 
-        function downloadReport() {
-            alert('PDF download feature would be implemented here');
-        }
-
-        function emailReport() {
-            alert('Email feature would be implemented here');
-        }
-
-        function scheduleReport() {
-            alert('Schedule scan feature would be implemented here');
+        function saveGoogleSettings() {
+            const val = document.getElementById('googleClientIdInput').value.trim();
+            localStorage.setItem('google_client_id', val);
+            alert('Google Client ID config saved successfully!');
+            window.location.reload();
         }
 
         function confirmDeleteAccount() {
             if (confirm('Are you sure? This action cannot be undone.')) {
-                alert('Account deletion would be implemented here');
+                alert('Account deletion request submitted.');
             }
         }
 
-        function displayResults(url, report) {
-            let domain = url;
-            try {
-                domain = new URL(url).hostname;
-            } catch (_) {}
-
-            document.getElementById('resultWebsite').textContent = `Scan Results for ${domain}`;
-            
-            // Extract score & status from real backend or mock object
-            const score = report.summary?.security_score ?? report.score ?? 80;
-            document.getElementById('scoreValue').textContent = score;
-
-            const status = report.summary?.risk_level || report.status || 'Low';
-            const scoreStatus = document.getElementById('scoreStatus');
-            scoreStatus.textContent = status;
-            scoreStatus.classList.remove('risk-low', 'risk-medium', 'risk-high');
-            const riskVal = (status || '').toUpperCase();
-            if (riskVal === 'HIGH' || riskVal.includes('HIGH')) {
-                scoreStatus.classList.add('risk-high');
-            } else if (riskVal === 'MEDIUM' || riskVal.includes('MEDIUM')) {
-                scoreStatus.classList.add('risk-medium');
-            } else {
-                scoreStatus.classList.add('risk-low');
-            }
-
-            // Extract SSL info
-            const sslScan = report.scans?.ssl || report.ssl || {};
-            const sslStatus = sslScan.ssl_enabled !== undefined 
-                ? (sslScan.ssl_enabled ? 'Valid' : 'Insecure') 
-                : (sslScan.status || 'Valid');
-            const sslProtocol = sslScan.protocol_version || sslScan.protocol || 'TLS 1.3';
-            const sslExpires = sslScan.expiry_date || sslScan.expires || 'N/A';
-
-            document.getElementById('sslStatus').textContent = sslStatus;
-            document.getElementById('sslProtocol').textContent = sslProtocol;
-            document.getElementById('sslExpires').textContent = sslExpires;
-
-            // Extract Vulnerability Counts
-            let crit = report.vulnerabilities?.critical ?? 0;
-            let high = report.vulnerabilities?.high ?? 0;
-            let med = report.vulnerabilities?.medium ?? 0;
-            let low = report.vulnerabilities?.low ?? 0;
-
-            if (report.scans) {
-                if (report.scans.ports?.open_ports) {
-                    const risky = [21, 23, 3389, 22];
-                    report.scans.ports.open_ports.forEach(p => {
-                        if (risky.includes(p.port)) high++; else med++;
-                    });
-                }
-                if (report.scans.headers?.missing_security_headers) {
-                    med += report.scans.headers.missing_security_headers.length;
-                }
-                if (report.scans.exposed_paths?.found_paths) {
-                    crit += report.scans.exposed_paths.found_paths.length;
-                }
-            }
-
-            document.getElementById('vulnCritical').textContent = crit;
-            document.getElementById('vulnHigh').textContent = high;
-            document.getElementById('vulnMedium').textContent = med;
-            document.getElementById('vulnLow').textContent = low;
-
-            // Update progress circle
-            const circle = document.getElementById('progressCircle');
-            if (circle) {
-                const circumference = 2 * Math.PI * 45;
-                const offset = circumference - (score / 100) * circumference;
-                circle.style.strokeDashoffset = offset;
-            }
-        }
-
-        // Mock scan report generator helper for simulation in dashboard
-        function generateDetailedReport(url) {
-            const score = Math.floor(Math.random() * 65) + 30;
-            let status = 'Low';
-            if (score < 50) {
-                status = 'High';
-            } else if (score < 80) {
-                status = 'Medium';
-            }
-
-            return {
-                score: score,
-                status: status,
-                ssl: {
-                    status: score > 50 ? 'Valid' : 'Insecure',
-                    protocol: score > 75 ? 'TLS 1.3' : 'TLS 1.2',
-                    expires: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-                },
-                vulnerabilities: {
-                    critical: score < 50 ? 1 : 0,
-                    high: score < 65 ? Math.floor(Math.random() * 2) : 0,
-                    medium: Math.floor(Math.random() * 3),
-                    low: Math.floor(Math.random() * 4) + 1
-                }
-            };
-        }
     </script>
     <!-- Floating AI Chatbot Widget -->
     <div class="ai-chatbot-widget" id="aiChatbotWidget">

@@ -402,6 +402,24 @@ def scan_website(data: ScanRequest, current_user: dict = Depends(get_current_use
         )
 
         # Save scan document into scans_collection in MongoDB Atlas
+        scan_id_str = None
+        full_scans_dict = {
+            "ssl": ssl_result,
+            "headers": headers_result,
+            "ports": ports_result,
+            "seo": seo_result,
+            "dns": dns_result,
+            "performance": performance_result,
+            "technology": technology_result,
+            "cors": cors_result,
+            "exposed_paths": exposed_paths_result
+        }
+        summary_dict = {
+            "security_score": score_result.get("security_score", 50) if score_result else 50,
+            "risk_level": score_result.get("risk_level", "UNKNOWN") if score_result else "UNKNOWN",
+            "recommendations": score_result.get("recommendations", []) if score_result else [],
+            "human_summary": human_summary
+        }
         try:
             from database import scans_collection
             scan_doc = {
@@ -410,33 +428,23 @@ def scan_website(data: ScanRequest, current_user: dict = Depends(get_current_use
                 "url": target_url,
                 "score": score_result.get("security_score", 50) if score_result else 50,
                 "risk_level": score_result.get("risk_level", "UNKNOWN") if score_result else "UNKNOWN",
-                "createdAt": datetime.now(timezone.utc).isoformat()
+                "createdAt": datetime.now(timezone.utc).isoformat(),
+                "summary": summary_dict,
+                "website_info": info_result,
+                "scans": full_scans_dict
             }
-            scans_collection.insert_one(scan_doc)
+            res = scans_collection.insert_one(scan_doc)
+            scan_id_str = str(res.inserted_id)
         except Exception as scan_err:
             print(f"Error saving scan document to MongoDB: {scan_err}")
 
         return {
+            "id": scan_id_str,
             "success": True,
             "website": target_url,
-            "summary": {
-                "security_score": score_result.get("security_score", 50) if score_result else 50,
-                "risk_level": score_result.get("risk_level", "UNKNOWN") if score_result else "UNKNOWN",
-                "recommendations": score_result.get("recommendations", []) if score_result else [],
-                "human_summary": human_summary
-            },
+            "summary": summary_dict,
             "website_info": info_result,
-            "scans": {
-                "ssl": ssl_result,
-                "headers": headers_result,
-                "ports": ports_result,
-                "seo": seo_result,
-                "dns": dns_result,
-                "performance": performance_result,
-                "technology": technology_result,
-                "cors": cors_result,
-                "exposed_paths": exposed_paths_result
-            }
+            "scans": full_scans_dict
         }
     except Exception as e:
         print(f"Error executing scan: {e}")
@@ -453,3 +461,356 @@ def scan_website(data: ScanRequest, current_user: dict = Depends(get_current_use
             "website_info": {},
             "scans": get_fallback_scans(str(e))
         }
+
+
+# PDF Generation Helper
+def generate_pdf_report_bytes(scan_data: dict) -> bytes:
+    from io import BytesIO
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        rightMargin=36,
+        leftMargin=36,
+        topMargin=36,
+        bottomMargin=36
+    )
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'DocTitle',
+        parent=styles['Heading1'],
+        fontSize=20,
+        leading=24,
+        textColor=colors.HexColor('#0f172a'),
+        fontName='Helvetica-Bold'
+    )
+    subtitle_style = ParagraphStyle(
+        'DocSubtitle',
+        parent=styles['Normal'],
+        fontSize=10,
+        leading=14,
+        textColor=colors.HexColor('#64748b')
+    )
+    heading2_style = ParagraphStyle(
+        'SectionHeader',
+        parent=styles['Heading2'],
+        fontSize=13,
+        leading=17,
+        textColor=colors.HexColor('#1e293b'),
+        fontName='Helvetica-Bold',
+        spaceBefore=10,
+        spaceAfter=6
+    )
+    body_style = ParagraphStyle(
+        'BodyDark',
+        parent=styles['Normal'],
+        fontSize=9,
+        leading=13,
+        textColor=colors.HexColor('#334155')
+    )
+
+    story = []
+
+    url = scan_data.get('url') or scan_data.get('website') or 'Target Website'
+    score = scan_data.get('score') if scan_data.get('score') is not None else scan_data.get('summary', {}).get('security_score', 0)
+    risk = str(scan_data.get('risk_level') or scan_data.get('summary', {}).get('risk_level', 'UNKNOWN')).upper()
+    date_str = scan_data.get('createdAt') or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+    story.append(Paragraph("ShieldScope - Security Audit Report", title_style))
+    story.append(Paragraph(f"Target URL: <b>{url}</b> &nbsp;|&nbsp; Audit Date: {date_str}", subtitle_style))
+    story.append(Spacer(1, 8))
+    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#cbd5e1'), spaceAfter=12))
+
+    score_bg = colors.HexColor('#dcfce7') if score >= 80 else (colors.HexColor('#fef9c3') if score >= 50 else colors.HexColor('#fee2e2'))
+    score_hex = '#166534' if score >= 80 else ('#854d0e' if score >= 50 else '#991b1b')
+
+    score_data = [
+        [
+            Paragraph(f"<b>Overall Security Score</b><br/><font size=18 color='{score_hex}'><b>{score} / 100</b></font>", body_style),
+            Paragraph(f"<b>Risk Rating</b><br/><font size=15 color='{score_hex}'><b>{risk}</b></font>", body_style)
+        ]
+    ]
+    score_table = Table(score_data, colWidths=[270, 270])
+    score_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), score_bg),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('PADDING', (0,0), (-1,-1), 10),
+        ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#94a3b8'))
+    ]))
+    story.append(score_table)
+    story.append(Spacer(1, 12))
+
+    human_sum = scan_data.get('summary', {}).get('human_summary')
+    if human_sum:
+        story.append(Paragraph("Executive Summary", heading2_style))
+        story.append(Paragraph(human_sum, body_style))
+        story.append(Spacer(1, 10))
+
+    story.append(Paragraph("Scanner Modules Assessment", heading2_style))
+    module_rows = [
+        [Paragraph("<b>Security Module</b>", body_style), Paragraph("<b>Status & Findings</b>", body_style)]
+    ]
+
+    scans = scan_data.get('scans', {})
+
+    # SSL
+    ssl_info = scans.get('ssl', {})
+    ssl_status = "Secure (HTTPS)" if ssl_info.get('ssl_enabled') else "Insecure / Invalid SSL"
+    module_rows.append([Paragraph("SSL / TLS Certificate", body_style), Paragraph(ssl_status, body_style)])
+
+    # Headers
+    headers_info = scans.get('headers', {})
+    missing_h = len(headers_info.get('missing_headers', []))
+    h_desc = f"Missing {missing_h} security header(s)" if missing_h > 0 else "All key security headers present"
+    module_rows.append([Paragraph("Security Headers", body_style), Paragraph(h_desc, body_style)])
+
+    # Ports
+    ports_info = scans.get('ports', {})
+    open_p = len(ports_info.get('open_ports', []))
+    p_desc = f"{open_p} open port(s) detected" if open_p > 0 else "No risky open ports detected"
+    module_rows.append([Paragraph("Port & Service Scanner", body_style), Paragraph(p_desc, body_style)])
+
+    # DNS
+    dns_info = scans.get('dns', {})
+    spf = "SPF Configured" if dns_info.get('has_spf') else "Missing SPF"
+    dmarc = "DMARC Configured" if dns_info.get('has_dmarc') else "Missing DMARC"
+    module_rows.append([Paragraph("DNS Configuration", body_style), Paragraph(f"IP: {dns_info.get('ip_address', 'N/A')} | {spf} | {dmarc}", body_style)])
+
+    # Performance
+    perf_info = scans.get('performance', {})
+    perf_score = perf_info.get('performance_score', 'N/A')
+    module_rows.append([Paragraph("Performance Analysis", body_style), Paragraph(f"Score: {perf_score}/100 | FCP: {perf_info.get('first_contentful_paint', 'N/A')}", body_style)])
+
+    # SEO
+    seo_info = scans.get('seo', {})
+    module_rows.append([Paragraph("SEO & Structure Audit", body_style), Paragraph(f"Title: {seo_info.get('title', 'N/A')} | H1 Tags: {seo_info.get('h1_count', 0)}", body_style)])
+
+    # CORS
+    cors_info = scans.get('cors', {})
+    module_rows.append([Paragraph("CORS Policy", body_style), Paragraph(f"Risk Level: {cors_info.get('risk_level', 'LOW')}", body_style)])
+
+    # Exposed Paths
+    exp_info = scans.get('exposed_paths', {})
+    found_paths = len(exp_info.get('findings', []))
+    module_rows.append([Paragraph("Exposed Sensitive Files", body_style), Paragraph(f"{found_paths} sensitive file/path finding(s)", body_style)])
+
+    # Tech Stack
+    tech_info = scans.get('technology', {})
+    tech_list = list(tech_info.get('technologies', {}).keys())
+    t_desc = ", ".join(tech_list[:5]) if tech_list else "No specific server header exposed"
+    module_rows.append([Paragraph("Technology Stack", body_style), Paragraph(t_desc, body_style)])
+
+    mod_table = Table(module_rows, colWidths=[180, 360])
+    mod_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#f1f5f9')),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        ('TOPPADDING', (0,0), (-1,-1), 5),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE')
+    ]))
+    story.append(mod_table)
+    story.append(Spacer(1, 12))
+
+    recs = scan_data.get('summary', {}).get('recommendations', [])
+    if recs:
+        story.append(Paragraph("Remediation Action Items", heading2_style))
+        for r in recs:
+            story.append(Paragraph(f"• {r}", body_style))
+            story.append(Spacer(1, 2))
+
+    doc.build(story)
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+    return pdf_bytes
+
+
+# Single Scan Detail Endpoint
+@app.get("/api/scans/{scan_id}")
+def get_scan_detail(scan_id: str, current_user: dict = Depends(get_current_user)):
+    from database import scans_collection
+    from bson import ObjectId
+    try:
+        doc = scans_collection.find_one({"_id": ObjectId(scan_id), "userId": current_user["id"]})
+        if not doc:
+            raise HTTPException(status_code=404, detail="Scan not found")
+        doc["id"] = str(doc["_id"])
+        del doc["_id"]
+        return {"success": True, "scan": doc}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid scan ID")
+
+
+# PDF Download Route
+from fastapi import Response
+
+@app.get("/api/scans/{scan_id}/pdf")
+def download_scan_pdf(scan_id: str, current_user: dict = Depends(get_current_user)):
+    from database import scans_collection
+    from bson import ObjectId
+    try:
+        doc = scans_collection.find_one({"_id": ObjectId(scan_id), "userId": current_user["id"]})
+        if not doc:
+            raise HTTPException(status_code=404, detail="Scan not found")
+        
+        doc["id"] = str(doc["_id"])
+        pdf_bytes = generate_pdf_report_bytes(doc)
+        filename = f"ShieldScope_Report_{doc.get('url', 'scan').replace('https://','').replace('http://','').replace('/','_')}.pdf"
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not generate PDF: {str(e)}")
+
+
+# Scheduled Scans Models and Endpoints
+class ScheduleRequest(BaseModel):
+    url: str
+    frequency: str = "weekly" # "daily" or "weekly"
+
+@app.get("/api/scans/schedule")
+def get_scheduled_scan(current_user: dict = Depends(get_current_user)):
+    from database import scheduled_scans_collection
+    sched = scheduled_scans_collection.find_one({"userId": current_user["id"]})
+    if not sched:
+        return {"success": True, "scheduled": False, "schedule": None}
+    sched["id"] = str(sched["_id"])
+    del sched["_id"]
+    return {"success": True, "scheduled": True, "schedule": sched}
+
+@app.post("/api/scans/schedule")
+def create_scheduled_scan(data: ScheduleRequest, current_user: dict = Depends(get_current_user)):
+    from database import scheduled_scans_collection
+    target_url = data.url.strip()
+    if not target_url.startswith("http://") and not target_url.startswith("https://"):
+        target_url = "https://" + target_url
+
+    is_valid, resolved_ip, reason = validate_public_url(target_url)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=f"Target URL invalid: {reason}")
+
+    next_run = (datetime.now(timezone.utc) + (timedelta(days=1) if data.frequency == "daily" else timedelta(days=7))).isoformat()
+    
+    doc = {
+        "userId": current_user["id"],
+        "email": current_user["email"],
+        "url": target_url,
+        "frequency": data.frequency,
+        "next_run": next_run,
+        "createdAt": datetime.now(timezone.utc).isoformat()
+    }
+
+    scheduled_scans_collection.update_one(
+        {"userId": current_user["id"]},
+        {"$set": doc},
+        upsert=True
+    )
+    return {"success": True, "message": "Recurring scan scheduled successfully", "schedule": doc}
+
+@app.delete("/api/scans/schedule")
+def cancel_scheduled_scan(current_user: dict = Depends(get_current_user)):
+    from database import scheduled_scans_collection
+    scheduled_scans_collection.delete_one({"userId": current_user["id"]})
+    return {"success": True, "message": "Scheduled scan cancelled"}
+
+
+# Background Scheduler Setup
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import timedelta
+
+scheduler = BackgroundScheduler()
+
+def run_scheduled_jobs():
+    from database import scheduled_scans_collection, scans_collection, users_collection
+    now_dt = datetime.now(timezone.utc)
+    now_iso = now_dt.isoformat()
+    
+    schedules = list(scheduled_scans_collection.find({}))
+    for s in schedules:
+        try:
+            next_run_str = s.get("next_run")
+            if next_run_str and datetime.fromisoformat(next_run_str) > now_dt:
+                continue
+            
+            target_url = s.get("url")
+            user_id = s.get("userId")
+
+            is_valid, resolved_ip, reason = validate_public_url(target_url)
+            if not is_valid:
+                print(f"[Scheduler] SSRF validation failed for scheduled target {target_url}: {reason}")
+                continue
+
+            headers_result = run_safe(scan_headers, target_url, resolved_ip, default_dict={"success": False, "headers": {}, "missing_headers": []})
+            ssl_result = run_safe(scan_ssl, target_url, resolved_ip, default_dict={"success": False, "ssl_enabled": False})
+            ports_result = run_safe(scan_ports, target_url, resolved_ip, default_dict={"success": False, "open_ports": [], "vulnerable_ports": [], "vulnerability_counts": {}})
+            seo_result = run_safe(scan_seo, target_url, resolved_ip, default_dict={"success": False, "title": "Not Found", "h1_count": 0, "missing_alt_images": 0})
+            dns_result = run_safe(scan_dns, target_url, resolved_ip, default_dict={"success": False, "ip_address": resolved_ip or "Not Found", "A": [], "MX": [], "NS": [], "TXT": []})
+            technology_result = run_safe(scan_technology, target_url, resolved_ip, default_dict={"success": False, "technologies": {}})
+            performance_result = run_safe(scan_performance, target_url, resolved_ip, default_dict={"success": False, "performance_score": 50})
+            info_result = run_safe(scan_info, target_url, resolved_ip, default_dict={"success": False})
+            cors_result = run_safe(scan_cors, target_url, resolved_ip, default_dict={"success": False, "risk_level": "LOW", "findings": []})
+            exposed_paths_result = run_safe(scan_exposed_paths, target_url, resolved_ip, default_dict={"success": False, "findings": []})
+
+            score_result = calculate_score(
+                headers_result, ssl_result, ports_result, seo_result, performance_result, dns_result, cors_result, exposed_paths=exposed_paths_result
+            )
+            human_summary = generate_human_summary(
+                info_result, score_result, ssl_result, headers_result, ports_result, performance_result
+            )
+
+            freq = s.get("frequency", "weekly")
+            next_dt = now_dt + (timedelta(days=1) if freq == "daily" else timedelta(days=7))
+
+            scan_doc = {
+                "userId": user_id,
+                "email": s.get("email"),
+                "url": target_url,
+                "score": score_result.get("security_score", 50) if score_result else 50,
+                "risk_level": score_result.get("risk_level", "UNKNOWN") if score_result else "UNKNOWN",
+                "createdAt": now_iso,
+                "is_scheduled": True,
+                "summary": {
+                    "security_score": score_result.get("security_score", 50) if score_result else 50,
+                    "risk_level": score_result.get("risk_level", "UNKNOWN") if score_result else "UNKNOWN",
+                    "recommendations": score_result.get("recommendations", []) if score_result else [],
+                    "human_summary": human_summary
+                },
+                "website_info": info_result,
+                "scans": {
+                    "ssl": ssl_result,
+                    "headers": headers_result,
+                    "ports": ports_result,
+                    "seo": seo_result,
+                    "dns": dns_result,
+                    "performance": performance_result,
+                    "technology": technology_result,
+                    "cors": cors_result,
+                    "exposed_paths": exposed_paths_result
+                }
+            }
+            scans_collection.insert_one(scan_doc)
+
+            scheduled_scans_collection.update_one(
+                {"_id": s["_id"]},
+                {"$set": {"next_run": next_dt.isoformat(), "last_run": now_iso}}
+            )
+            print(f"[Scheduler] Completed scheduled scan for {target_url} (User: {user_id})")
+        except Exception as ex:
+            print(f"[Scheduler] Error processing scheduled scan for {s}: {ex}")
+
+@app.on_event("startup")
+def start_background_jobs():
+    try:
+        scheduler.add_job(run_scheduled_jobs, 'interval', minutes=10, id='scheduled_scans_task', replace_existing=True)
+        scheduler.start()
+        print("Background APScheduler started successfully.")
+    except Exception as e:
+        print(f"Error starting BackgroundScheduler: {e}")

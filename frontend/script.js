@@ -361,32 +361,59 @@ async function scanWebsite() {
 
         const nextState = isPartial ? ScanState.PARTIAL : ScanState.COMPLETED;
 
-        try {
-            document.getElementById('resultWebsite').textContent = new URL(url).hostname;
-        } catch (_) {
-            document.getElementById('resultWebsite').textContent = url;
-        }
-        document.getElementById('resultUrl').textContent = url;
-        document.getElementById('resultDate').textContent = new Date().toLocaleString();
-        document.getElementById('scannerVersion').textContent = 'Engine v1.0';
+        displayScanData(url, data);
 
-        document.getElementById('humanSummaryText').textContent = data.summary?.human_summary || "No summary generated.";
+        setScanState(nextState);
 
-        const info = data.website_info || {};
-        document.getElementById('metaIp').textContent = info.ip_address || "N/A";
-        document.getElementById('metaLocation').textContent = info.country || "N/A";
-        document.getElementById('metaIsp').textContent = info.isp || "N/A";
-        document.getElementById('metaCreated').textContent = info.created || "N/A";
-        document.getElementById('metaRegistrar').textContent = info.registrar || "N/A";
-        document.getElementById('metaConnectionType').textContent = data.scans?.ssl?.ssl_enabled ? 'Secure (HTTPS)' : 'Insecure (HTTP)';
+        setTimeout(() => {
+            const resSec = document.getElementById('resultsSection');
+            if (resSec) resSec.scrollIntoView({ behavior: 'smooth' });
+        }, 300);
 
-        const score = data.summary?.security_score ?? 0;
-        document.getElementById('scoreValue').textContent = score;
+    } catch (error) {
+        console.error("Scan error:", error);
+        setScanState(ScanState.FAILED, { error: error.message || 'An unexpected error occurred while processing results.' });
+    }
+}
 
-        const scoreStatus = document.getElementById('scoreStatus');
-        scoreStatus.textContent = data.summary?.risk_level || 'UNKNOWN';
+// Universal DOM renderer for scan data (shared between index and dashboard)
+function displayScanData(url, data) {
+    if (!data) return;
+
+    let domain = url;
+    try {
+        domain = new URL(url).hostname;
+    } catch (_) {}
+
+    const setElemText = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+    };
+
+    setElemText('resultWebsite', domain);
+    setElemText('resultUrl', url);
+    setElemText('resultDate', data.createdAt ? new Date(data.createdAt).toLocaleString() : new Date().toLocaleString());
+    setElemText('scannerVersion', 'Engine v1.0');
+
+    setElemText('humanSummaryText', data.summary?.human_summary || "No summary generated.");
+
+    const info = data.website_info || {};
+    setElemText('metaIp', info.ip_address || "N/A");
+    setElemText('metaLocation', info.country || "N/A");
+    setElemText('metaIsp', info.isp || "N/A");
+    setElemText('metaCreated', info.created || "N/A");
+    setElemText('metaRegistrar', info.registrar || "N/A");
+    setElemText('metaConnectionType', data.scans?.ssl?.ssl_enabled ? 'Secure (HTTPS)' : 'Insecure (HTTP)');
+
+    const score = data.summary?.security_score ?? data.score ?? 0;
+    setElemText('scoreValue', score);
+
+    const scoreStatus = document.getElementById('scoreStatus');
+    if (scoreStatus) {
+        const riskLevel = data.summary?.risk_level || data.risk_level || 'UNKNOWN';
+        scoreStatus.textContent = riskLevel;
         scoreStatus.classList.remove('risk-low', 'risk-medium', 'risk-high');
-        const riskVal = (data.summary?.risk_level || '').toUpperCase();
+        const riskVal = (riskLevel || '').toUpperCase();
         if (riskVal === 'HIGH' || riskVal.includes('HIGH')) {
             scoreStatus.classList.add('risk-high');
         } else if (riskVal === 'MEDIUM' || riskVal.includes('MEDIUM')) {
@@ -394,101 +421,89 @@ async function scanWebsite() {
         } else {
             scoreStatus.classList.add('risk-low');
         }
+    }
 
-        const progressCircle = document.getElementById('progressCircle');
-        if (progressCircle) {
-            const circumference = 282.7;
-            const offset = circumference - (score / 100) * circumference;
-            progressCircle.style.strokeDashoffset = offset;
-        }
+    const progressCircle = document.getElementById('progressCircle');
+    if (progressCircle) {
+        const circumference = 282.7;
+        const offset = circumference - (score / 100) * circumference;
+        progressCircle.style.strokeDashoffset = offset;
+    }
 
-        const sslScan = data.scans?.ssl || {};
-        if (sslScan.success === false) {
-            document.getElementById('sslStatus').textContent = 'Scan failed for this category';
-            document.getElementById('sslProtocol').textContent = 'Scan failed for this category';
-            document.getElementById('sslExpires').textContent = 'Scan failed for this category';
-            document.getElementById('sslCert').textContent = 'Scan failed for this category';
-        } else {
-            document.getElementById('sslStatus').textContent = sslScan.ssl_enabled ? 'Enabled' : 'Disabled';
-            document.getElementById('sslProtocol').textContent = sslScan.protocol_version || 'None';
-            document.getElementById('sslExpires').textContent = sslScan.expiry_date || 'N/A';
-            document.getElementById('sslCert').textContent = sslScan.is_self_signed 
-                ? 'Self-Signed (Warning)' 
-                : (sslScan.success ? 'Valid' : 'Invalid');
-        }
+    const sslScan = data.scans?.ssl || {};
+    if (sslScan.success === false) {
+        setElemText('sslStatus', 'Scan failed for this category');
+        setElemText('sslProtocol', 'Scan failed for this category');
+        setElemText('sslExpires', 'Scan failed for this category');
+        setElemText('sslCert', 'Scan failed for this category');
+    } else {
+        setElemText('sslStatus', sslScan.ssl_enabled ? 'Enabled' : 'Disabled');
+        setElemText('sslProtocol', sslScan.protocol_version || 'None');
+        setElemText('sslExpires', sslScan.expiry_date || 'N/A');
+        setElemText('sslCert', sslScan.is_self_signed ? 'Self-Signed (Warning)' : (sslScan.success ? 'Valid' : 'Invalid'));
+    }
 
-        const portsScan = data.scans?.ports || {};
-        if (portsScan.success === false) {
-            document.getElementById('runningServices').textContent = 'Scan failed for this category';
-            document.getElementById('openPorts').textContent = 'Scan failed for this category';
-            document.getElementById('vulnerablePorts').textContent = 'Scan failed for this category';
-        } else {
-            const openPorts = portsScan.open_ports || [];
-            const vulnerablePorts = portsScan.vulnerable_ports || [];
-            const vulnCounts = portsScan.vulnerability_counts || {};
+    const portsScan = data.scans?.ports || {};
+    if (portsScan.success === false) {
+        setElemText('runningServices', 'Scan failed for this category');
+        setElemText('openPorts', 'Scan failed for this category');
+        setElemText('vulnerablePorts', 'Scan failed for this category');
+    } else {
+        const openPorts = portsScan.open_ports || [];
+        const vulnerablePorts = portsScan.vulnerable_ports || [];
+        const vulnCounts = portsScan.vulnerability_counts || {};
 
-            document.getElementById('runningServices').textContent =
-                openPorts.length > 0
-                    ? openPorts.map(port => typeof port === 'object' ? port.service : port).join(', ')
-                    : 'None';
+        setElemText('runningServices', openPorts.length > 0 ? openPorts.map(port => typeof port === 'object' ? port.service : port).join(', ') : 'None');
+        setElemText('openPorts', openPorts.length);
+        setElemText('vulnerablePorts', vulnerablePorts.length);
 
-            document.getElementById('openPorts').textContent = openPorts.length;
-            document.getElementById('vulnerablePorts').textContent = vulnerablePorts.length;
+        setElemText('criticalVuln', vulnCounts.critical ?? 0);
+        setElemText('highVuln', vulnCounts.high ?? 0);
+        setElemText('mediumVuln', vulnCounts.medium ?? 0);
+        setElemText('lowVuln', vulnCounts.low ?? 0);
 
-            let critCount = vulnCounts.critical ?? 0;
-            let highCount = vulnCounts.high ?? 0;
-            let medCount = vulnCounts.medium ?? 0;
-            let lowCount = vulnCounts.low ?? 0;
+        setElemText('vulnCritical', vulnCounts.critical ?? 0);
+        setElemText('vulnHigh', vulnCounts.high ?? 0);
+        setElemText('vulnMedium', vulnCounts.medium ?? 0);
+        setElemText('vulnLow', vulnCounts.low ?? 0);
+    }
 
-            const elCrit = document.getElementById('criticalVuln');
-            const elHigh = document.getElementById('highVuln');
-            const elMed = document.getElementById('mediumVuln');
-            const elLow = document.getElementById('lowVuln');
+    const perf = data.scans?.performance || {};
+    if (perf && perf.success !== false) {
+        setElemText('performanceScore', perf.performance_score !== undefined && perf.performance_score !== null ? Math.round(perf.performance_score) : 'N/A');
+        setElemText('fcp', perf.first_contentful_paint || 'N/A');
+        setElemText('lcp', perf.largest_contentful_paint || 'N/A');
+        setElemText('speedIndex', perf.speed_index || 'N/A');
+        setElemText('pageLoadTime', perf.page_load_time || 'N/A');
+        setElemText('ttfb', perf.ttfb || 'N/A');
+        setElemText('mobileFriendly', perf.mobile_friendly || 'N/A');
+    } else {
+        setElemText('performanceScore', 'Scan failed for this category');
+        setElemText('fcp', 'Scan failed for this category');
+        setElemText('lcp', 'Scan failed for this category');
+        setElemText('speedIndex', 'Scan failed for this category');
+        setElemText('pageLoadTime', 'Scan failed for this category');
+        setElemText('ttfb', 'Scan failed for this category');
+        setElemText('mobileFriendly', 'Scan failed for this category');
+    }
 
-            if (elCrit) elCrit.textContent = critCount;
-            if (elHigh) elHigh.textContent = highCount;
-            if (elMed) elMed.textContent = medCount;
-            if (elLow) elLow.textContent = lowCount;
-        }
+    const dnsScan = data.scans?.dns || {};
+    if (dnsScan.success === false) {
+        setElemText('dnsIp', 'Scan failed for this category');
+        setElemText('dnsA', 'Scan failed for this category');
+        setElemText('dnsMX', 'Scan failed for this category');
+        setElemText('dnsNS', 'Scan failed for this category');
+        setElemText('dnsTXT', 'Scan failed for this category');
+    } else {
+        setElemText('dnsIp', dnsScan.ip_address || 'N/A');
+        setElemText('dnsA', (dnsScan.A?.length) ? dnsScan.A.join(", ") : "None");
+        setElemText('dnsMX', (dnsScan.MX?.length) ? dnsScan.MX.join(", ") : "None");
+        setElemText('dnsNS', (dnsScan.NS?.length) ? dnsScan.NS.join(", ") : "None");
+        setElemText('dnsTXT', (dnsScan.TXT?.length) ? dnsScan.TXT.slice(0, 3).join(", ") : "None");
+    }
 
-        const perf = data.scans?.performance;
-        if (perf && perf.success !== false) {
-            document.getElementById('performanceScore').textContent = 
-                perf.performance_score !== undefined && perf.performance_score !== null 
-                    ? Math.round(perf.performance_score) 
-                    : 'N/A';
-            document.getElementById('fcp').textContent = perf.first_contentful_paint || 'N/A';
-            document.getElementById('lcp').textContent = perf.largest_contentful_paint || 'N/A';
-            document.getElementById('speedIndex').textContent = perf.speed_index || 'N/A';
-            document.getElementById('pageLoadTime').textContent = perf.page_load_time || 'N/A';
-            document.getElementById('ttfb').textContent = perf.ttfb || 'N/A';
-            document.getElementById('mobileFriendly').textContent = perf.mobile_friendly || 'N/A';
-        } else {
-            document.getElementById('performanceScore').textContent = 'Scan failed for this category';
-            document.getElementById('fcp').textContent = 'Scan failed for this category';
-            document.getElementById('lcp').textContent = 'Scan failed for this category';
-            document.getElementById('speedIndex').textContent = 'Scan failed for this category';
-            document.getElementById('pageLoadTime').textContent = 'Scan failed for this category';
-            document.getElementById('ttfb').textContent = 'Scan failed for this category';
-            document.getElementById('mobileFriendly').textContent = 'Scan failed for this category';
-        }
-
-        const dnsScan = data.scans?.dns || {};
-        if (dnsScan.success === false) {
-            document.getElementById("dnsIp").textContent = "Scan failed for this category";
-            document.getElementById("dnsA").textContent = "Scan failed for this category";
-            document.getElementById("dnsMX").textContent = "Scan failed for this category";
-            document.getElementById("dnsNS").textContent = "Scan failed for this category";
-            document.getElementById("dnsTXT").textContent = "Scan failed for this category";
-        } else {
-            document.getElementById("dnsIp").textContent = dnsScan.ip_address || "N/A";
-            document.getElementById("dnsA").textContent = (dnsScan.A?.length) ? dnsScan.A.join(", ") : "None";
-            document.getElementById("dnsMX").textContent = (dnsScan.MX?.length) ? dnsScan.MX.join(", ") : "None";
-            document.getElementById("dnsNS").textContent = (dnsScan.NS?.length) ? dnsScan.NS.join(", ") : "None";
-            document.getElementById("dnsTXT").textContent = (dnsScan.TXT?.length) ? dnsScan.TXT.slice(0, 3).join(", ") : "None";
-        }
-
-        const technologyContainer = document.getElementById("technologyContainer");
+    const technologyContainer = document.getElementById("technologyContainer");
+    if (technologyContainer) {
         const technology = data.scans?.technology || {};
         if (technology.success && technology.technologies && Object.keys(technology.technologies).length > 0) {
             technologyContainer.innerHTML = "";
@@ -510,50 +525,46 @@ async function scanWebsite() {
         } else {
             technologyContainer.innerHTML = `<div class="technology-loading">No technology detected.</div>`;
         }
+    }
 
-        const seoScan = data.scans?.seo || {};
-        if (seoScan.success === false) {
-            document.getElementById('seoTitle').textContent = 'Scan failed for this category';
-            document.getElementById('seoMetaDescription').textContent = 'Scan failed for this category';
-            document.getElementById('seoMissingAltImages').textContent = 'Scan failed for this category';
-            document.getElementById('headingCount').textContent = 'Scan failed for this category';
+    const seoScan = data.scans?.seo || {};
+    if (seoScan.success === false) {
+        setElemText('seoTitle', 'Scan failed for this category');
+        setElemText('seoMetaDescription', 'Scan failed for this category');
+        setElemText('seoMissingAltImages', 'Scan failed for this category');
+        setElemText('headingCount', 'Scan failed for this category');
+    } else {
+        setElemText('seoTitle', seoScan.title || 'Not Found');
+        setElemText('seoMetaDescription', seoScan.meta_description ? 'Present' : 'Missing');
+        setElemText('seoMissingAltImages', seoScan.missing_alt_images ?? 0);
+        setElemText('headingCount', seoScan.h1_count ?? 0);
+    }
+
+    const recommendations = data.summary?.recommendations || [];
+    const recommendationList = document.getElementById("recommendationsList");
+    if (recommendationList) {
+        recommendationList.innerHTML = "";
+        if (recommendations.length > 0) {
+            recommendations.forEach(rec => {
+                const li = document.createElement("li");
+                li.textContent = rec;
+                recommendationList.appendChild(li);
+            });
         } else {
-            document.getElementById('seoTitle').textContent = seoScan.title || 'Not Found';
-            document.getElementById('seoMetaDescription').textContent = seoScan.meta_description ? 'Present' : 'Missing';
-            document.getElementById('seoMissingAltImages').textContent = seoScan.missing_alt_images ?? 0;
-            document.getElementById('headingCount').textContent = seoScan.h1_count ?? 0;
+            recommendationList.innerHTML = "<li>No specific recommendations.</li>";
         }
+    }
 
-        const recommendations = data.summary?.recommendations || [];
-        const recommendationList = document.getElementById("recommendationsList");
-        if (recommendationList) {
-            recommendationList.innerHTML = "";
-            if (recommendations.length > 0) {
-                recommendations.forEach(rec => {
-                    const li = document.createElement("li");
-                    li.textContent = rec;
-                    recommendationList.appendChild(li);
-                });
-            } else {
-                recommendationList.innerHTML = "<li>No specific recommendations.</li>";
-            }
-        }
-
-        populateSslDetails(data.scans?.ssl);
-        populateSeoDetails(data.scans?.seo);
-        populatePerformanceDetails(data.scans?.performance);
-        populateDnsDetails(data.scans?.dns);
-        populateTechnologyDetails(data.scans?.technology);
-        populatePortsDetails(data.scans?.ports);
-        populateHeadersDetails(data.scans?.headers);
-        populateCorsDetails(data.scans?.cors);
-        populateExposedPathsDetails(data.scans?.exposed_paths);
-
-        setScanState(nextState);
-
-        setTimeout(() => {
-            document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
-        }, 300);
+    if (typeof populateSslDetails === 'function') populateSslDetails(data.scans?.ssl);
+    if (typeof populateSeoDetails === 'function') populateSeoDetails(data.scans?.seo);
+    if (typeof populatePerformanceDetails === 'function') populatePerformanceDetails(data.scans?.performance);
+    if (typeof populateDnsDetails === 'function') populateDnsDetails(data.scans?.dns);
+    if (typeof populateTechnologyDetails === 'function') populateTechnologyDetails(data.scans?.technology);
+    if (typeof populatePortsDetails === 'function') populatePortsDetails(data.scans?.ports);
+    if (typeof populateHeadersDetails === 'function') populateHeadersDetails(data.scans?.headers);
+    if (typeof populateCorsDetails === 'function') populateCorsDetails(data.scans?.cors);
+    if (typeof populateExposedPathsDetails === 'function') populateExposedPathsDetails(data.scans?.exposed_paths);
+}
 
     } catch (error) {
         console.error("Scan error:", error);
