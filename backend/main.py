@@ -1,7 +1,6 @@
 from fastapi import FastAPI, HTTPException, Header, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-
+from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone
 
 from pydantic import BaseModel, EmailStr
@@ -85,6 +84,32 @@ def get_current_user(authorization: str = Header(None, alias="Authorization")):
 # Request models
 class ScanRequest(BaseModel):
     url: str
+
+class ScanSummary(BaseModel):
+    security_score: int
+    risk_level: str
+    recommendations: List[str] = []
+    human_summary: Optional[str] = None
+
+class ScanModules(BaseModel):
+    ssl: Optional[Dict[str, Any]] = None
+    headers: Optional[Dict[str, Any]] = None
+    ports: Optional[Dict[str, Any]] = None
+    seo: Optional[Dict[str, Any]] = None
+    dns: Optional[Dict[str, Any]] = None
+    performance: Optional[Dict[str, Any]] = None
+    technology: Optional[Dict[str, Any]] = None
+    cors: Optional[Dict[str, Any]] = None
+    exposed_paths: Optional[Dict[str, Any]] = None
+
+class ScanResponse(BaseModel):
+    id: Optional[str] = None
+    success: bool
+    website: str
+    summary: ScanSummary
+    website_info: Optional[Dict[str, Any]] = None
+    scans: Optional[ScanModules] = None
+    error: Optional[str] = None
 
 class ChatRequest(BaseModel):
     message: str
@@ -302,7 +327,7 @@ def get_fallback_scans(reason: str = "Scan unavailable"):
         "performance": {"success": False, "performance_score": 0, "error": reason},
         "technology": {"success": False, "technologies": {}, "error": reason},
         "cors": {"success": False, "risk_level": "LOW", "findings": [], "error": reason},
-        "exposed_paths": {"success": False, "findings": [], "error": reason}
+        "exposed_paths": {"success": False, "exposed_paths": [], "total_checked": 0, "exposed_count": 0, "protected_paths": [], "error": reason}
     }
 
 def run_safe(scanner_fn, *args, default_dict=None):
@@ -328,7 +353,7 @@ def execute_all_scanners(target_url: str, resolved_ip: str):
         f_perf = executor.submit(run_safe, scan_performance, target_url, resolved_ip, default_dict={"success": False, "performance_score": 50})
         f_info = executor.submit(run_safe, scan_info, target_url, resolved_ip, default_dict={"success": False})
         f_cors = executor.submit(run_safe, scan_cors, target_url, resolved_ip, default_dict={"success": False, "risk_level": "LOW", "findings": []})
-        f_exposed = executor.submit(run_safe, scan_exposed_paths, target_url, resolved_ip, default_dict={"success": False, "findings": []})
+        f_exposed = executor.submit(run_safe, scan_exposed_paths, target_url, resolved_ip, default_dict={"success": False, "exposed_paths": [], "total_checked": 0, "exposed_count": 0, "protected_paths": []})
 
         headers_result = f_headers.result()
         ssl_result = f_ssl.result()
@@ -355,7 +380,7 @@ def execute_all_scanners(target_url: str, resolved_ip: str):
     }
 
 # Scan route
-@app.post("/scan")
+@app.post("/scan", response_model=ScanResponse)
 def scan_website(data: ScanRequest, current_user: dict = Depends(get_current_user_optional)):
     if current_user:
         scans_left = current_user.get("scans_remaining", 0)
@@ -625,7 +650,7 @@ def generate_pdf_report_bytes(scan_data: dict) -> bytes:
 
     # Exposed Paths
     exp_info = scans.get('exposed_paths', {})
-    found_paths = len(exp_info.get('findings', []))
+    found_paths = len(exp_info.get('exposed_paths', []))
     module_rows.append([Paragraph("Exposed Sensitive Files", body_style), Paragraph(f"{found_paths} sensitive file/path finding(s)", body_style)])
 
     # Tech Stack
