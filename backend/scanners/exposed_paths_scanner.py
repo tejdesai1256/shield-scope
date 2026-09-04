@@ -79,7 +79,28 @@ SIGNATURES = {
     "/dump.sql":          ["INSERT INTO", "CREATE TABLE"],
     "/docker-compose.yml":["version:", "services:"],
     "/appsettings.json":  ["ConnectionStrings"],
+    "/actuator":          ["_links", "\"self\":", "\"health\":", "\"beans\":"],
     "/actuator/env":      ["propertySources", "systemEnvironment"],
+    "/actuator/beans":    ["contexts", "beans", "scope"],
+    "/actuator/heapdump": ["HPROF", "JAVA PROFILE"],
+    "/swagger-ui.html":   ["swagger-ui", "swaggerui", "swagger-ui-bundle", "openapi:"],
+    "/v2/api-docs":       ["\"swagger\":", "\"openapi\":", "\"paths\":", "\"definitions\":"],
+    "/phpmyadmin/":       ["phpmyadmin", "pma_username", "pma_password", "pma-"],
+    "/adminer.php":       ["adminer", "login to database"],
+    "/server-status":     ["apache server status", "server version:", "server uptime:"],
+    "/phpinfo.php":       ["phpinfo()", "php version", "configuration file (php.ini) path"],
+    "/elmah.axd":         ["error log for", "elmah", "system.web"],
+    "/.htaccess":         ["rewriteengine", "rewriterule", "authname", "order allow,deny", "deny from"],
+    "/.htpasswd":         [":$apr1$", ":$2y$", ":$2a$", ":{SHA}"],
+    "/.npmrc":            ["_authToken=", "//registry.npmjs.org/"],
+    "/.vscode/sftp.json": ["\"host\":", "\"username\":", "\"password\":"],
+    "/.svn/entries":      ["svn:entry", "dir\n", "file\n"],
+    "/.DS_Store":         ["Bud1", "DSDB"],
+    "/composer.json":     ["\"require\":", "\"name\":", "\"description\":"],
+    "/package.json":      ["\"dependencies\":", "\"devDependencies\":", "\"scripts\":"],
+    "/.well-known/security.txt": ["contact:", "expires:", "encryption:"],
+    "/web.config":        ["<configuration>", "<system.webServer>", "<connectionStrings>"],
+    "/admin/":            ["admin login", "administrator login", "login to admin", "wp-login"]
 }
 
 MAX_WORKERS = 15

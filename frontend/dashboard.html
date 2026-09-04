@@ -583,7 +583,7 @@
             }
 
             const user = auth.getCurrentUser();
-            if ((user.scansRemaining ?? user.scans_remaining ?? 0) <= 0) {
+            if (user && (user.scansRemaining ?? user.scans_remaining ?? 0) <= 0) {
                 showDashboardError('You have reached your scan limit. Please upgrade your account.');
                 return;
             }

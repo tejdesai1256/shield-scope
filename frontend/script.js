@@ -316,18 +316,20 @@ async function scanWebsite() {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
-        const response = await fetch(apiUrl, {
+        let response = await fetch(apiUrl, {
             method: 'POST',
             headers: headers,
             body: JSON.stringify({ url })
         });
 
-        // Handle authentication and authorization errors before parsing body
+        // If 401 happens (e.g. stale or expired token in localStorage), clear session and retry anonymously
         if (response.status === 401) {
-            auth.clearSession();
-            setScanState(ScanState.FAILED, { error: 'Your session has expired. Please log in again.' });
-            setTimeout(() => { window.location.href = 'login.html'; }, 2000);
-            return;
+            if (typeof auth !== 'undefined') auth.clearSession();
+            response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
         }
 
         if (response.status === 403) {
@@ -564,12 +566,6 @@ function displayScanData(url, data) {
     if (typeof populateHeadersDetails === 'function') populateHeadersDetails(data.scans?.headers);
     if (typeof populateCorsDetails === 'function') populateCorsDetails(data.scans?.cors);
     if (typeof populateExposedPathsDetails === 'function') populateExposedPathsDetails(data.scans?.exposed_paths);
-}
-
-    } catch (error) {
-        console.error("Scan error:", error);
-        setScanState(ScanState.FAILED, { error: error.message || 'An unexpected error occurred while processing results.' });
-    }
 }
 
 // Update progress bars
@@ -1178,41 +1174,47 @@ function toggleCardDetails(panelId, btn) {
 
 function populateSslDetails(sslData) {
     if (!sslData) return;
-    document.getElementById('sslProtocolVersion').textContent = sslData.protocol_version || '-';
-    document.getElementById('sslCipher').textContent = sslData.cipher_suite || '-';
-    document.getElementById('sslIssuer').textContent = sslData.issuer || '-';
-    document.getElementById('sslSubjectCN').textContent = sslData.subject_common_name || '-';
-    document.getElementById('sslSanDomains').textContent = (sslData.san_domains || []).join(', ') || '-';
-    document.getElementById('sslSelfSigned').textContent = sslData.is_self_signed ? 'Yes (Warning)' : 'No (Secure)';
-    document.getElementById('sslSerial').textContent = sslData.serial_number || '-';
+    const setElem = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setElem('sslProtocolVersion', sslData.protocol_version || '-');
+    setElem('sslCipher', sslData.cipher_suite || '-');
+    setElem('sslIssuer', sslData.issuer || '-');
+    setElem('sslSubjectCN', sslData.subject_common_name || '-');
+    setElem('sslSanDomains', (sslData.san_domains || []).join(', ') || '-');
+    setElem('sslSelfSigned', sslData.is_self_signed ? 'Yes (Warning)' : 'No (Secure)');
+    setElem('sslSerial', sslData.serial_number || '-');
 }
 
 function populateSeoDetails(seoData) {
     if (!seoData) return;
-    document.getElementById('seoCanonical').textContent = seoData.canonical_url || 'None';
-    document.getElementById('seoRobots').textContent = seoData.robots_meta || 'None';
-    document.getElementById('seoViewport').innerHTML = seoData.has_viewport 
-        ? '<span style="color: var(--success);"><i class="fas fa-check-circle"></i> Enabled</span>' 
-        : '<span style="color: var(--danger);"><i class="fas fa-times-circle"></i> Missing</span>';
-    document.getElementById('seoOgTitle').textContent = seoData.og_title || 'None';
-    document.getElementById('seoOgDescription').textContent = seoData.og_description || 'None';
-    document.getElementById('seoWordCount').textContent = seoData.word_count || '0';
-    document.getElementById('seoInternalLinks').textContent = seoData.internal_links || '0';
-    document.getElementById('seoExternalLinks').textContent = seoData.external_links || '0';
+    const setElem = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setElem('seoCanonical', seoData.canonical_url || 'None');
+    setElem('seoRobots', seoData.robots_meta || 'None');
+    const vpEl = document.getElementById('seoViewport');
+    if (vpEl) {
+        vpEl.innerHTML = seoData.has_viewport 
+            ? '<span style="color: var(--success);"><i class="fas fa-check-circle"></i> Enabled</span>' 
+            : '<span style="color: var(--danger);"><i class="fas fa-times-circle"></i> Missing</span>';
+    }
+    setElem('seoOgTitle', seoData.og_title || 'None');
+    setElem('seoOgDescription', seoData.og_description || 'None');
+    setElem('seoWordCount', seoData.word_count || '0');
+    setElem('seoInternalLinks', seoData.internal_links || '0');
+    setElem('seoExternalLinks', seoData.external_links || '0');
 }
 
 function populatePerformanceDetails(perfData) {
+    const setElem = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
     if (!perfData || perfData.success === false) {
-        document.getElementById('perfTbt').textContent = '--';
-        document.getElementById('perfCls').textContent = '--';
+        setElem('perfTbt', '--');
+        setElem('perfCls', '--');
         const oppsContainer = document.getElementById('perfOpportunities');
         if (oppsContainer) {
             oppsContainer.innerHTML = '<div style="opacity: 0.6; padding: 4px 0;">Performance scan details unavailable.</div>';
         }
         return;
     }
-    document.getElementById('perfTbt').textContent = perfData.total_blocking_time || '0 ms';
-    document.getElementById('perfCls').textContent = perfData.cumulative_layout_shift || '0';
+    setElem('perfTbt', perfData.total_blocking_time || '0 ms');
+    setElem('perfCls', perfData.cumulative_layout_shift || '0');
     
     const oppsContainer = document.getElementById('perfOpportunities');
     if (!oppsContainer) return;
@@ -1239,24 +1241,33 @@ function populatePerformanceDetails(perfData) {
 
 function populateDnsDetails(dnsData) {
     if (!dnsData) return;
-    document.getElementById('dnsSpfPresent').innerHTML = dnsData.has_spf 
-        ? '<span style="color: var(--success);"><i class="fas fa-check-circle"></i> Present</span>' 
-        : '<span style="color: var(--danger);"><i class="fas fa-times-circle"></i> Missing</span>';
-    document.getElementById('dnsSpfRecord').textContent = dnsData.spf_record || 'None';
+    const spfPres = document.getElementById('dnsSpfPresent');
+    if (spfPres) {
+        spfPres.innerHTML = dnsData.has_spf 
+            ? '<span style="color: var(--success);"><i class="fas fa-check-circle"></i> Present</span>' 
+            : '<span style="color: var(--danger);"><i class="fas fa-times-circle"></i> Missing</span>';
+    }
+    const spfRec = document.getElementById('dnsSpfRecord');
+    if (spfRec) spfRec.textContent = dnsData.spf_record || 'None';
     
-    document.getElementById('dnsDmarcPresent').innerHTML = dnsData.has_dmarc 
-        ? '<span style="color: var(--success);"><i class="fas fa-check-circle"></i> Present</span>' 
-        : '<span style="color: var(--danger);"><i class="fas fa-times-circle"></i> Missing</span>';
-    document.getElementById('dnsDmarcRecord').textContent = dnsData.dmarc_record || 'None';
+    const dmarcPres = document.getElementById('dnsDmarcPresent');
+    if (dmarcPres) {
+        dmarcPres.innerHTML = dnsData.has_dmarc 
+            ? '<span style="color: var(--success);"><i class="fas fa-check-circle"></i> Present</span>' 
+            : '<span style="color: var(--danger);"><i class="fas fa-times-circle"></i> Missing</span>';
+    }
+    const dmarcRec = document.getElementById('dnsDmarcRecord');
+    if (dmarcRec) dmarcRec.textContent = dnsData.dmarc_record || 'None';
 }
 
 function populateTechnologyDetails(techData) {
     if (!techData) return;
     const additional = techData.additional_detection || {};
-    document.getElementById('techServer').textContent = additional.server || 'Unknown';
-    document.getElementById('techPoweredBy').textContent = additional.powered_by || 'Unknown';
-    document.getElementById('techGenerator').textContent = additional.generator || 'None';
-    document.getElementById('techCookies').textContent = (additional.cookies_detected || []).join(', ') || 'None';
+    const setElem = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setElem('techServer', additional.server || 'Unknown');
+    setElem('techPoweredBy', additional.powered_by || 'Unknown');
+    setElem('techGenerator', additional.generator || 'None');
+    setElem('techCookies', (additional.cookies_detected || []).join(', ') || 'None');
 }
 
 function populatePortsDetails(portsData) {
@@ -1312,7 +1323,8 @@ function populateHeadersDetails(headersData) {
     const missingHeaders = headersData.missing_headers || [];
     const descriptions = headersData.header_descriptions || {};
     
-    document.getElementById('headersMissingCount').textContent = missingHeaders.length;
+    const countEl = document.getElementById('headersMissingCount');
+    if (countEl) countEl.textContent = missingHeaders.length;
     
     const detailsContainer = document.getElementById('headersMissingDetails');
     if (!detailsContainer) return;
