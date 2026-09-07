@@ -11,4 +11,5 @@ pymongo
 bcrypt
 python-jose[cryptography]
 reportlab
-apscheduler
+apscheduler
+openpyxl

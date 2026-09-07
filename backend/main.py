@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Header, Depends, status
+from fastapi import FastAPI, HTTPException, Header, Depends, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone
@@ -22,6 +22,7 @@ from scanners.exposed_paths_scanner import scan_exposed_paths
 from services.ai_service import get_ai_response
 from services.url_validator import validate_public_url
 from category_detector import detect_category
+from excel_exporter import append_scan_to_excel
 
 from services.auth_service import (
     hash_password, verify_password, create_access_token,
@@ -401,7 +402,11 @@ def execute_all_scanners(target_url: str, resolved_ip: str):
 
 # Scan route
 @app.post("/scan", response_model=ScanResponse)
-def scan_website(data: ScanRequest, current_user: dict = Depends(get_current_user_optional)):
+def scan_website(
+    data: ScanRequest,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user_optional)
+):
     if current_user:
         scans_left = current_user.get("scans_remaining", 0)
         if scans_left <= 0:
@@ -497,25 +502,30 @@ def scan_website(data: ScanRequest, current_user: dict = Depends(get_current_use
             "recommendations": score_result.get("recommendations", []) if score_result else [],
             "human_summary": human_summary
         }
+        scan_doc = {
+            "userId": current_user["id"] if current_user else None,
+            "email": current_user["email"] if current_user else "guest@shieldscope.local",
+            "url": target_url,
+            "category": detected_category,
+            "score": score_result.get("security_score", 50) if score_result else 50,
+            "risk_level": score_result.get("risk_level", "UNKNOWN") if score_result else "UNKNOWN",
+            "createdAt": datetime.now(timezone.utc).isoformat(),
+            "summary": summary_dict,
+            "website_info": info_result,
+            "scans": full_scans_dict
+        }
         try:
             from database import scans_collection
-            scan_doc = {
-                "userId": current_user["id"] if current_user else None,
-                "email": current_user["email"] if current_user else "guest@shieldscope.local",
-                "url": target_url,
-                "category": detected_category,
-                "score": score_result.get("security_score", 50) if score_result else 50,
-                "risk_level": score_result.get("risk_level", "UNKNOWN") if score_result else "UNKNOWN",
-                "createdAt": datetime.now(timezone.utc).isoformat(),
-                "summary": summary_dict,
-                "website_info": info_result,
-                "scans": full_scans_dict
-            }
             res = scans_collection.insert_one(scan_doc)
             scan_id_str = str(res.inserted_id)
         except Exception as scan_err:
             print(f"Error saving scan document to MongoDB: {scan_err}")
 
+        # Automatically append completed scan to Excel report (fire-and-forget in background)
+        try:
+            background_tasks.add_task(append_scan_to_excel, scan_doc)
+        except Exception as excel_err:
+            print(f"Error scheduling Excel append task: {excel_err}")
 
         return {
             "id": scan_id_str,
@@ -877,6 +887,10 @@ def run_scheduled_jobs():
                     "scans": full_scans_dict
                 }
                 scans_collection.insert_one(scan_doc)
+                try:
+                    append_scan_to_excel(scan_doc)
+                except Exception as excel_err:
+                    print(f"[Scheduler] Excel report append error: {excel_err}")
 
                 scheduled_scans_collection.update_one(
                     {"_id": s["_id"]},
