@@ -425,6 +425,25 @@ function displayScanData(url, data) {
         }
     }
 
+    // Category badge rendering
+    const categoryBadge = document.getElementById('categoryBadge');
+    if (categoryBadge) {
+        const category = data.category || 'Other';
+        const catIcons = {
+            'Education': '🎓',
+            'Hospital': '🏥',
+            'Real Estate': '🏠',
+            'E-commerce': '🛒',
+            'Corporate': '🏢',
+            'Government': '🏛️',
+            'Other': '🌐'
+        };
+        const catIcon = catIcons[category] || '🌐';
+        categoryBadge.innerHTML = `${catIcon} ${category}`;
+        categoryBadge.className = `category-badge category-${category.toLowerCase().replace(/[\s-]+/g, '-')}`;
+        categoryBadge.style.display = 'inline-flex';
+    }
+
     const progressCircle = document.getElementById('progressCircle');
     if (progressCircle) {
         const circumference = 282.7;

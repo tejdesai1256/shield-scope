@@ -21,6 +21,7 @@ from scanners.cors_scanner import scan_cors
 from scanners.exposed_paths_scanner import scan_exposed_paths
 from services.ai_service import get_ai_response
 from services.url_validator import validate_public_url
+from category_detector import detect_category
 
 from services.auth_service import (
     hash_password, verify_password, create_access_token,
@@ -106,6 +107,7 @@ class ScanResponse(BaseModel):
     id: Optional[str] = None
     success: bool
     website: str
+    category: str = "Other"
     summary: ScanSummary
     website_info: Optional[Dict[str, Any]] = None
     scans: Optional[ScanModules] = None
@@ -234,11 +236,29 @@ def get_scan_history(current_user: dict = Depends(get_current_user)):
         history.append({
             "id": str(d.get("_id")),
             "url": d.get("url"),
+            "category": d.get("category", "Other"),
             "score": d.get("score"),
             "risk_level": d.get("risk_level"),
             "createdAt": d.get("createdAt")
         })
     return {"success": True, "scans": history}
+
+
+@app.get("/api/scans/category/{category}")
+def get_scans_by_category_endpoint(category: str, current_user: dict = Depends(get_current_user)):
+    from database import get_scans_by_category
+    docs = get_scans_by_category(category, current_user["id"])
+    history = []
+    for d in docs:
+        history.append({
+            "id": str(d.get("_id")),
+            "url": d.get("url"),
+            "category": d.get("category", "Other"),
+            "score": d.get("score"),
+            "risk_level": d.get("risk_level"),
+            "createdAt": d.get("createdAt")
+        })
+    return {"success": True, "category": category, "scans": history}
 
 def generate_human_summary(website_info, score_result, ssl_result, headers_result, ports_result, performance_result):
     if not website_info or not website_info.get("success"):
@@ -409,6 +429,7 @@ def scan_website(data: ScanRequest, current_user: dict = Depends(get_current_use
             return {
                 "success": False,
                 "website": data.url,
+                "category": "Other",
                 "error": reason,
                 "summary": {
                     "security_score": 0,
@@ -442,6 +463,11 @@ def scan_website(data: ScanRequest, current_user: dict = Depends(get_current_use
             cors_result,
             exposed_paths=exposed_paths_result
         )
+
+        page_title = seo_result.get("title") or ""
+        page_meta = seo_result.get("meta_description") or ""
+        page_text = seo_result.get("page_text") or ""
+        detected_category = detect_category(target_url, page_title, page_meta, page_text)
 
         human_summary = generate_human_summary(
             info_result,
@@ -477,6 +503,7 @@ def scan_website(data: ScanRequest, current_user: dict = Depends(get_current_use
                 "userId": current_user["id"] if current_user else None,
                 "email": current_user["email"] if current_user else "guest@shieldscope.local",
                 "url": target_url,
+                "category": detected_category,
                 "score": score_result.get("security_score", 50) if score_result else 50,
                 "risk_level": score_result.get("risk_level", "UNKNOWN") if score_result else "UNKNOWN",
                 "createdAt": datetime.now(timezone.utc).isoformat(),
@@ -494,6 +521,7 @@ def scan_website(data: ScanRequest, current_user: dict = Depends(get_current_use
             "id": scan_id_str,
             "success": True,
             "website": target_url,
+            "category": detected_category,
             "summary": summary_dict,
             "website_info": info_result,
             "scans": full_scans_dict
@@ -503,6 +531,7 @@ def scan_website(data: ScanRequest, current_user: dict = Depends(get_current_use
         return {
             "success": False,
             "website": data.url,
+            "category": "Other",
             "error": str(e),
             "summary": {
                 "security_score": 0,
@@ -574,8 +603,9 @@ def generate_pdf_report_bytes(scan_data: dict) -> bytes:
     risk = str(scan_data.get('risk_level') or scan_data.get('summary', {}).get('risk_level', 'UNKNOWN')).upper()
     date_str = scan_data.get('createdAt') or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
+    category = scan_data.get('category') or 'Other'
     story.append(Paragraph("ShieldScope - Security Audit Report", title_style))
-    story.append(Paragraph(f"Target URL: <b>{url}</b> &nbsp;|&nbsp; Audit Date: {date_str}", subtitle_style))
+    story.append(Paragraph(f"Target URL: <b>{url}</b> &nbsp;|&nbsp; Category: <b>{category}</b> &nbsp;|&nbsp; Audit Date: {date_str}", subtitle_style))
     story.append(Spacer(1, 8))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#cbd5e1'), spaceAfter=12))
 
@@ -823,10 +853,16 @@ def run_scheduled_jobs():
                 freq = s.get("frequency", "weekly")
                 next_dt = now_dt + (timedelta(days=1) if freq == "daily" else timedelta(days=7))
 
+                sched_title = seo_result.get("title") or ""
+                sched_meta = seo_result.get("meta_description") or ""
+                sched_text = seo_result.get("page_text") or ""
+                sched_category = detect_category(target_url, sched_title, sched_meta, sched_text)
+
                 scan_doc = {
                     "userId": user_id,
                     "email": s.get("email"),
                     "url": target_url,
+                    "category": sched_category,
                     "score": score_result.get("security_score", 50) if score_result else 50,
                     "risk_level": score_result.get("risk_level", "UNKNOWN") if score_result else "UNKNOWN",
                     "createdAt": now_iso,

@@ -95,8 +95,9 @@ def scan_seo(url, pinned_ip=None):
         og_description = soup.find("meta", property="og:description")
         og_image = soup.find("meta", property="og:image")
 
-        # Word count
-        word_count = len(soup.get_text().split())
+        # Word count & Page text
+        visible_text = soup.get_text(separator=" ", strip=True)
+        word_count = len(visible_text.split())
 
         # Link analysis
         from urllib.parse import urlparse as up
@@ -124,6 +125,9 @@ def scan_seo(url, pinned_ip=None):
 
             "meta_description":
                 meta_description,
+
+            "page_text":
+                visible_text[:15000],
 
             "meta_description_exists":
                 meta_description is not None,

@@ -205,6 +205,7 @@
                         </div>
                         <div class="score-risk-label">RISK LEVEL</div>
                         <div class="score-status" id="scoreStatus">No Scan Performed Yet</div>
+                        <div class="category-badge" id="categoryBadge" style="display: none;"></div>
                     </div>
                 </div>
 
@@ -428,8 +429,18 @@
                     <p>View all your past website scans and audit reports</p>
                 </div>
 
-                <div class="history-filters" style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
-                    <input type="text" id="searchHistory" placeholder="Search by website URL..." onkeyup="filterHistory()" style="flex: 1; padding: 0.6rem 1rem; border-radius: var(--radius-md, 8px); border: 1px solid var(--border-color); background: var(--surface);">
+                <div class="history-filters" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                    <input type="text" id="searchHistory" placeholder="Search by website URL..." onkeyup="filterHistory()" style="flex: 1; min-width: 200px; padding: 0.6rem 1rem; border-radius: var(--radius-md, 8px); border: 1px solid var(--border-color); background: var(--surface);">
+                    <select id="categoryFilter" onchange="onCategoryFilterChange()" style="padding: 0.6rem 1rem; border-radius: var(--radius-md, 8px); border: 1px solid var(--border-color); background: var(--surface);">
+                        <option value="All">All Categories</option>
+                        <option value="Education">🎓 Education</option>
+                        <option value="Hospital">🏥 Hospital</option>
+                        <option value="Real Estate">🏠 Real Estate</option>
+                        <option value="E-commerce">🛒 E-commerce</option>
+                        <option value="Corporate">🏢 Corporate</option>
+                        <option value="Government">🏛️ Government</option>
+                        <option value="Other">🌐 Other</option>
+                    </select>
                     <select id="sortBy" onchange="filterHistory()" style="padding: 0.6rem 1rem; border-radius: var(--radius-md, 8px); border: 1px solid var(--border-color); background: var(--surface);">
                         <option value="recent">Most Recent</option>
                         <option value="oldest">Oldest First</option>
@@ -719,7 +730,8 @@
                         <p class="scan-url">${scan.url}</p>
                         <p class="scan-date">${new Date(scan.createdAt).toLocaleDateString()}</p>
                     </div>
-                    <div class="scan-score">
+                    <div class="scan-score" style="display: flex; align-items: center; gap: 8px;">
+                        <span class="category-badge category-badge-inline">${getCategoryIcon(scan.category || 'Other')} ${scan.category || 'Other'}</span>
                         <span class="score-badge score-${(scan.risk_level || 'LOW').toLowerCase()}">${scan.score}</span>
                     </div>
                 </div>
@@ -779,6 +791,7 @@
                     <thead>
                         <tr style="border-bottom: 2px solid var(--border-color); text-align: left; font-size: 0.85rem; color: var(--text-secondary);">
                             <th style="padding: 10px;">Website Target</th>
+                            <th style="padding: 10px;">Category</th>
                             <th style="padding: 10px;">Score</th>
                             <th style="padding: 10px;">Risk Rating</th>
                             <th style="padding: 10px;">Audit Date</th>
@@ -789,6 +802,7 @@
                         ${filtered.map((scan) => `
                             <tr style="border-bottom: 1px solid var(--border-color); font-size: 0.9rem;">
                                 <td style="padding: 12px 10px; font-weight: 500;">${scan.url}</td>
+                                <td style="padding: 12px 10px;"><span class="category-badge category-badge-inline">${getCategoryIcon(scan.category || 'Other')} ${scan.category || 'Other'}</span></td>
                                 <td style="padding: 12px 10px;"><span class="score-badge" style="padding: 4px 8px; border-radius: 4px; font-weight: 700;">${scan.score}</span></td>
                                 <td style="padding: 12px 10px;"><span style="font-weight: 600; text-transform: uppercase; font-size: 0.8rem;">${scan.risk_level || 'LOW'}</span></td>
                                 <td style="padding: 12px 10px; color: var(--text-secondary);">${new Date(scan.createdAt).toLocaleDateString()}</td>
@@ -802,6 +816,48 @@
                 </table>
             `;
         }
+
+        function getCategoryIcon(category) {
+            const icons = {
+                'Education': '🎓',
+                'Hospital': '🏥',
+                'Real Estate': '🏠',
+                'E-commerce': '🛒',
+                'Corporate': '🏢',
+                'Government': '🏛️',
+                'Other': '🌐'
+            };
+            return icons[category] || '🌐';
+        }
+
+        async function onCategoryFilterChange() {
+            const category = document.getElementById('categoryFilter')?.value || 'All';
+            if (category === 'All') {
+                await loadScanHistory();
+                return;
+            }
+            try {
+                const apiHost = typeof auth !== 'undefined' ? auth.backendBase : (typeof window.getBackendBaseUrl === 'function' ? window.getBackendBaseUrl() : 'https://shieldscope-backend-e3hu.onrender.com');
+                const res = await auth.fetchWithAuth(`${apiHost}/api/scans/category/${encodeURIComponent(category)}`);
+                if (res && res.ok) {
+                    const data = await res.json();
+                    if (data.success && Array.isArray(data.scans)) {
+                        scanHistory = data.scans;
+                        document.getElementById('totalScans').textContent = scanHistory.length;
+                        displayRecentScans();
+                        populateHistoryTable();
+                        renderScoreTrendChart(scanHistory);
+                        return;
+                    }
+                }
+                console.warn('Category filter fetch failed, falling back to full history');
+                await loadScanHistory();
+            } catch (e) {
+                console.error('Error fetching scans by category:', e);
+                await loadScanHistory();
+            }
+        }
+
 
         // STEP 4: Score Trend Chart Renderer
         function renderScoreTrendChart(historyData) {
