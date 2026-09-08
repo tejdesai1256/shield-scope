@@ -367,6 +367,18 @@ async function scanWebsite() {
 
         setScanState(nextState);
 
+        // Persist scan state so results stay completely stable even if page refreshes
+        try {
+            sessionStorage.setItem('shieldscope_current_scan', JSON.stringify({
+                url: url,
+                data: data,
+                state: nextState,
+                timestamp: Date.now()
+            }));
+        } catch (storageErr) {
+            console.warn('SessionStorage save warning:', storageErr);
+        }
+
         setTimeout(() => {
             const resSec = document.getElementById('resultsSection');
             if (resSec) resSec.scrollIntoView({ behavior: 'smooth' });
@@ -576,15 +588,15 @@ function displayScanData(url, data) {
         }
     }
 
-    if (typeof populateSslDetails === 'function') populateSslDetails(data.scans?.ssl);
-    if (typeof populateSeoDetails === 'function') populateSeoDetails(data.scans?.seo);
-    if (typeof populatePerformanceDetails === 'function') populatePerformanceDetails(data.scans?.performance);
-    if (typeof populateDnsDetails === 'function') populateDnsDetails(data.scans?.dns);
-    if (typeof populateTechnologyDetails === 'function') populateTechnologyDetails(data.scans?.technology);
-    if (typeof populatePortsDetails === 'function') populatePortsDetails(data.scans?.ports);
-    if (typeof populateHeadersDetails === 'function') populateHeadersDetails(data.scans?.headers);
-    if (typeof populateCorsDetails === 'function') populateCorsDetails(data.scans?.cors);
-    if (typeof populateExposedPathsDetails === 'function') populateExposedPathsDetails(data.scans?.exposed_paths);
+    try { if (typeof populateSslDetails === 'function') populateSslDetails(data.scans?.ssl); } catch (e) { console.error('Error in populateSslDetails:', e); }
+    try { if (typeof populateSeoDetails === 'function') populateSeoDetails(data.scans?.seo); } catch (e) { console.error('Error in populateSeoDetails:', e); }
+    try { if (typeof populatePerformanceDetails === 'function') populatePerformanceDetails(data.scans?.performance); } catch (e) { console.error('Error in populatePerformanceDetails:', e); }
+    try { if (typeof populateDnsDetails === 'function') populateDnsDetails(data.scans?.dns); } catch (e) { console.error('Error in populateDnsDetails:', e); }
+    try { if (typeof populateTechnologyDetails === 'function') populateTechnologyDetails(data.scans?.technology); } catch (e) { console.error('Error in populateTechnologyDetails:', e); }
+    try { if (typeof populatePortsDetails === 'function') populatePortsDetails(data.scans?.ports); } catch (e) { console.error('Error in populatePortsDetails:', e); }
+    try { if (typeof populateHeadersDetails === 'function') populateHeadersDetails(data.scans?.headers); } catch (e) { console.error('Error in populateHeadersDetails:', e); }
+    try { if (typeof populateCorsDetails === 'function') populateCorsDetails(data.scans?.cors); } catch (e) { console.error('Error in populateCorsDetails:', e); }
+    try { if (typeof populateExposedPathsDetails === 'function') populateExposedPathsDetails(data.scans?.exposed_paths); } catch (e) { console.error('Error in populateExposedPathsDetails:', e); }
 }
 
 // Update progress bars
@@ -623,6 +635,9 @@ function updateProgressBar(id, percentage) {
 
 // Back to Scanner
 function backToScanner() {
+    try {
+        sessionStorage.removeItem('shieldscope_current_scan');
+    } catch (_) {}
     document.getElementById('resultsSection').style.display = 'none';
     document.getElementById('heroSection').style.display = 'block';
     const urlInput = document.getElementById('urlInput');
@@ -1182,13 +1197,38 @@ function toggleCardDetails(panelId, btn) {
         }
     } else {
         panel.classList.add('open');
-        panel.style.maxHeight = (panel.scrollHeight + 40) + "px";
+        panel.style.maxHeight = (panel.scrollHeight + 80) + "px";
         if (toggleBtn) {
             toggleBtn.classList.add('active');
             const icon = toggleBtn.querySelector('i');
             if (icon) icon.className = 'fas fa-minus';
         }
     }
+}
+
+function toggleAllModules(expand = true) {
+    const panels = document.querySelectorAll('.module-tile-body');
+    panels.forEach(panel => {
+        const tile = panel.closest('.module-tile');
+        const toggleBtn = tile ? tile.querySelector('.module-toggle-btn') : null;
+        if (expand) {
+            panel.classList.add('open');
+            panel.style.maxHeight = (panel.scrollHeight + 80) + "px";
+            if (toggleBtn) {
+                toggleBtn.classList.add('active');
+                const icon = toggleBtn.querySelector('i');
+                if (icon) icon.className = 'fas fa-minus';
+            }
+        } else {
+            panel.classList.remove('open');
+            panel.style.maxHeight = "0px";
+            if (toggleBtn) {
+                toggleBtn.classList.remove('active');
+                const icon = toggleBtn.querySelector('i');
+                if (icon) icon.className = 'fas fa-plus';
+            }
+        }
+    });
 }
 
 function populateSslDetails(sslData) {
@@ -2225,9 +2265,38 @@ document.addEventListener('click', e => {
     }
 });
 
+// Function to restore active scan from sessionStorage
+function restoreScanFromSession() {
+    try {
+        const raw = sessionStorage.getItem('shieldscope_current_scan');
+        if (!raw) return false;
+        const saved = JSON.parse(raw);
+        if (saved && saved.data && saved.url) {
+            const hero = document.getElementById('heroSection');
+            const results = document.getElementById('resultsSection');
+            if (hero && results) {
+                hero.style.display = 'none';
+                results.style.display = 'block';
+                displayScanData(saved.url, saved.data);
+                setScanState(saved.state || ScanState.COMPLETED);
+                const chatWidget = document.getElementById('aiChatbotWidget');
+                if (chatWidget) chatWidget.style.display = 'block';
+                const urlInput = document.getElementById('urlInput');
+                if (urlInput) urlInput.value = saved.url;
+                return true;
+            }
+        }
+    } catch (e) {
+        console.warn('Error restoring scan from sessionStorage:', e);
+    }
+    return false;
+}
+
 // Initialize scan state on page load
 document.addEventListener('DOMContentLoaded', () => {
-    setScanState(ScanState.IDLE);
+    const restored = restoreScanFromSession();
+    if (!restored) {
+        setScanState(ScanState.IDLE);
+    }
 });
-setScanState(ScanState.IDLE);
 
