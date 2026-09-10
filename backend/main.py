@@ -21,7 +21,7 @@ from scanners.cors_scanner import scan_cors
 from scanners.exposed_paths_scanner import scan_exposed_paths
 from services.ai_service import get_ai_response
 from services.url_validator import validate_public_url
-from category_detector import detect_category
+from category_detector import detect_category, detect_category_details, get_all_categories, get_category_metadata
 from excel_exporter import append_scan_to_excel
 
 from services.auth_service import (
@@ -260,6 +260,11 @@ def get_scans_by_category_endpoint(category: str, current_user: dict = Depends(g
             "createdAt": d.get("createdAt")
         })
     return {"success": True, "category": category, "scans": history}
+
+
+@app.get("/api/categories")
+def get_categories_endpoint():
+    return {"success": True, "categories": get_all_categories()}
 
 def generate_human_summary(website_info, score_result, ssl_result, headers_result, ports_result, performance_result):
     if not website_info or not website_info.get("success"):

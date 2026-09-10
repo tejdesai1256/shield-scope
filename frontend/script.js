@@ -444,15 +444,24 @@ function displayScanData(url, data) {
         const catIcons = {
             'Education': '🎓',
             'Hospital': '🏥',
-            'Real Estate': '🏠',
+            'Banking & Finance': '💳',
             'E-commerce': '🛒',
-            'Corporate': '🏢',
+            'News & Media': '📰',
+            'Technology & SaaS': '💻',
             'Government': '🏛️',
+            'Real Estate': '🏠',
+            'Corporate': '🏢',
+            'Social Media & Community': '👥',
+            'Travel & Hospitality': '✈️',
+            'Entertainment & Streaming': '🎬',
+            'Gaming & Esports': '🎮',
+            'Non-Profit & NGO': '🤝',
             'Other': '🌐'
         };
         const catIcon = catIcons[category] || '🌐';
+        const catSlug = category.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
         categoryBadge.innerHTML = `${catIcon} ${category}`;
-        categoryBadge.className = `category-badge category-${category.toLowerCase().replace(/[\s-]+/g, '-')}`;
+        categoryBadge.className = `category-badge category-${catSlug}`;
         categoryBadge.style.display = 'inline-flex';
     }
 
