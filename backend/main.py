@@ -723,46 +723,6 @@ def generate_pdf_report_bytes(scan_data: dict) -> bytes:
     return pdf_bytes
 
 
-# Single Scan Detail Endpoint
-@app.get("/api/scans/{scan_id}")
-def get_scan_detail(scan_id: str, current_user: dict = Depends(get_current_user)):
-    from database import scans_collection
-    from bson import ObjectId
-    try:
-        doc = scans_collection.find_one({"_id": ObjectId(scan_id), "userId": current_user["id"]})
-        if not doc:
-            raise HTTPException(status_code=404, detail="Scan not found")
-        doc["id"] = str(doc["_id"])
-        del doc["_id"]
-        return {"success": True, "scan": doc}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail="Invalid scan ID")
-
-
-# PDF Download Route
-from fastapi import Response
-
-@app.get("/api/scans/{scan_id}/pdf")
-def download_scan_pdf(scan_id: str, current_user: dict = Depends(get_current_user)):
-    from database import scans_collection
-    from bson import ObjectId
-    try:
-        doc = scans_collection.find_one({"_id": ObjectId(scan_id), "userId": current_user["id"]})
-        if not doc:
-            raise HTTPException(status_code=404, detail="Scan not found")
-        
-        doc["id"] = str(doc["_id"])
-        pdf_bytes = generate_pdf_report_bytes(doc)
-        filename = f"ShieldScope_Report_{doc.get('url', 'scan').replace('https://','').replace('http://','').replace('/','_')}.pdf"
-        return Response(
-            content=pdf_bytes,
-            media_type="application/pdf",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
-        )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Could not generate PDF: {str(e)}")
-
-
 # Scheduled Scans Models and Endpoints
 class ScheduleRequest(BaseModel):
     url: str
@@ -812,6 +772,46 @@ def cancel_scheduled_scan(current_user: dict = Depends(get_current_user)):
     from database import scheduled_scans_collection
     scheduled_scans_collection.delete_one({"userId": current_user["id"]})
     return {"success": True, "message": "Scheduled scan cancelled"}
+
+
+# Single Scan Detail Endpoint
+@app.get("/api/scans/{scan_id}")
+def get_scan_detail(scan_id: str, current_user: dict = Depends(get_current_user)):
+    from database import scans_collection
+    from bson import ObjectId
+    try:
+        doc = scans_collection.find_one({"_id": ObjectId(scan_id), "userId": current_user["id"]})
+        if not doc:
+            raise HTTPException(status_code=404, detail="Scan not found")
+        doc["id"] = str(doc["_id"])
+        del doc["_id"]
+        return {"success": True, "scan": doc}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid scan ID")
+
+
+# PDF Download Route
+from fastapi import Response
+
+@app.get("/api/scans/{scan_id}/pdf")
+def download_scan_pdf(scan_id: str, current_user: dict = Depends(get_current_user)):
+    from database import scans_collection
+    from bson import ObjectId
+    try:
+        doc = scans_collection.find_one({"_id": ObjectId(scan_id), "userId": current_user["id"]})
+        if not doc:
+            raise HTTPException(status_code=404, detail="Scan not found")
+        
+        doc["id"] = str(doc["_id"])
+        pdf_bytes = generate_pdf_report_bytes(doc)
+        filename = f"ShieldScope_Report_{doc.get('url', 'scan').replace('https://','').replace('http://','').replace('/','_')}.pdf"
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not generate PDF: {str(e)}")
 
 
 # Background Scheduler Setup
